@@ -1,13 +1,13 @@
-<header class="header" role="banner">
+<header class="header">
 	<div class="header-left">
 		<button class="hamburger" aria-label="Toggle Sidebar">
 			<i class="fas fa-bars"></i>
 		</button>
-		<a href="#" class="logo" aria-label="Autopulse Dashboard">
+		<a href="autopulse" class="logo" aria-label="Autopulse Dashboard">
 			<i class="fas fa-car"></i> Autopulse
 		</a>
 		<nav class="breadcrumb" aria-label="Breadcrumb">
-			<a href="#">Home</a>
+			<a href="home">Home</a>
 			<i class="fas fa-chevron-right"></i>
 			<span>Dashboard</span>
 		</nav>
