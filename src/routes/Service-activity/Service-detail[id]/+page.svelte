@@ -1,67 +1,13 @@
 <script>
-    import { onMount } from 'svelte';
-
-    // Reactive state for section toggling
+    export let data; // Data from +page.server.js
+    let serviceData = data.serviceData;
     let expandedSections = {
-        'service-info': true,
+        'service-detail': true,
         'member-info': true,
         'car-info': true
     };
 
-    // Reactive service data
-    let serviceData = {
-        serviceInfo: {
-            date: 'Saturday, 22 December 2024 13:00 - 14:00',
-            mileage: '20,123 km',
-            captain: 'Maryadi',
-            branch: 'Honda Denpasar'
-        },
-        memberInfo: {
-            name: 'Anne',
-            memberId: '123456789',
-            point: '2,600',
-            phone: '628123456789',
-            address: 'Jl. Siliwangi No.76, Pakuan, Kec. Bogor Selatan, Kota Bogor, Jawa Barat'
-        },
-        carInfo: {
-            brand: 'Toyota',
-            model: 'Rush',
-            licenseNumber: 'BA 1234 OOD',
-            vin: '123456789',
-            driverName: 'Yanto',
-            year: '2024'
-        },
-        transaction: {
-            items: [
-                {
-                    title: 'Tire Replacement - Bridgestone',
-                    costs: [
-                        { label: 'Service Fee', value: 'Rp 50,000' },
-                        { label: 'Price', value: 'Rp 600,000 x4' },
-                        { label: 'Discount 10%', value: '-Rp 240,000', isDiscount: true }
-                    ]
-                },
-                {
-                    title: 'Engine Oil Replacement - Castrol',
-                    costs: [
-                        { label: 'Service Fee', value: 'Rp 50,000' },
-                        { label: 'Price', value: 'Rp 600,000 x1' }
-                    ]
-                }
-            ],
-            subtotal: 'Rp 2,450,000',
-            totalDiscount: 'Rp 240,000',
-            tax: 'Rp 245,000',
-            grandTotal: 'Rp 2,455,000',
-            paymentStatus: 'Paid',
-            warrantyNote: 'Valid for 6 months from service date.'
-        }
-    };
-
-    // Loading state
-    let isLoading = true;
-
-    // Toggle section function
+    // Toggle section
     function toggleSection(sectionId) {
         expandedSections[sectionId] = !expandedSections[sectionId];
     }
@@ -69,52 +15,24 @@
     // Button actions
     function downloadInvoice() {
         console.log('Downloading invoice...');
-        // Suggestion: Implement actual PDF generation or API call
+        // Implement PDF generation or API call
     }
 
     function viewImages() {
         console.log('Viewing images...');
-        // Suggestion: Open a modal or navigate to image gallery
+        // Implement modal or gallery navigation
     }
 
     // Back navigation
     function goBack() {
         history.back();
-        // Alternative: goto('/previous-page'); // Replace with actual route
     }
-
-    // Keyboard navigation
-    onMount(() => {
-        function handleKeydown(e) {
-            if (e.key === 'Escape') {
-                goBack(); // Close or navigate back on Escape
-            }
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                const sections = ['service-info', 'member-info', 'car-info'];
-                const currentIndex = sections.findIndex(id => expandedSections[id]);
-                let newIndex = currentIndex;
-                if (e.key === 'ArrowUp') {
-                    newIndex = currentIndex > 0 ? currentIndex - 1 : sections.length - 1;
-                } else {
-                    newIndex = currentIndex < sections.length - 1 ? currentIndex + 1 : 0;
-                }
-                sections.forEach(id => expandedSections[id] = false);
-                expandedSections[sections[newIndex]] = true;
-            }
-        }
-
-        // Simulate loading
-        setTimeout(() => {
-            isLoading = false;
-        }, 1000);
-
-        document.addEventListener('keydown', handleKeydown);
-
-        return () => {
-            document.removeEventListener('keydown', handleKeydown);
-        };
-    });
 </script>
+
+<svelte:head>
+    <title>Autopulse - Service Detail</title>
+    <meta name="description" content="Autopulse Dashboard - Service Detail" />
+</svelte:head>
 
 <main class="main-content">
     <div class="content-header">
@@ -124,7 +42,7 @@
         <div class="user-info">
             <div class="user-avatar">A</div>
             <div>
-                <div style="font-size: var(--font-size-sm); font-weight: 600;">Autopulse</div>
+                <div style="font-size: var(--font-size-sm); font-weight: bold;">Autopulse</div>
                 <div style="font-size: var(--font-size-xs); opacity: 0.8;">Super Admin</div>
             </div>
             <i class="fas fa-chevron-down" style="font-size: 10px; opacity: 0.8;"></i>
@@ -133,8 +51,8 @@
 
     <h1 class="section-header">Service Detail</h1>
 
-    <div class="content-body" class:loading={isLoading}>
-        {#if isLoading}
+    <div class="content-body">
+        {#if !serviceData.serviceInfo}
             <div class="loading-spinner">Loading...</div>
         {:else}
             <div class="content-card">
@@ -149,13 +67,17 @@
                         <div>
                             <!-- Service Information -->
                             <div class="detail-section" id="service-info">
-                                <div class="detail-section-header" 
-                                     on:click={() => toggleSection('service-info')}
-                                     role="button" 
-                                     tabindex="0"
-                                     aria-expanded={expandedSections['service-info']}>
+                                <div
+                                    class="detail-section-header"
+                                    on:click={() => toggleSection('service-info')}
+                                    role="button"
+                                    tabindex="0"
+                                    aria-expanded={expandedSections['service-info']}
+                                >
                                     <h3>Service Information</h3>
-                                    <i class="fas {expandedSections['service-info'] ? 'fa-chevron-down' : 'fa-chevron-right'} toggle-icon"></i>
+                                    <i
+                                        class="fas {expandedSections['service-info'] ? 'fa-chevron-down' : 'fa-chevron-right'} toggle-icon"
+                                    ></i>
                                 </div>
                                 {#if expandedSections['service-info']}
                                     <div class="detail-content">
@@ -175,19 +97,27 @@
                                             <div class="detail-label">Branch</div>
                                             <div class="detail-value">{serviceData.serviceInfo.branch}</div>
                                         </div>
+                                        <div class="detail-row">
+                                            <div class="detail-label">Service Status</div>
+                                            <div class="detail-value">{serviceData.serviceInfo.status}</div>
+                                        </div>
                                     </div>
                                 {/if}
                             </div>
 
                             <!-- Member Information -->
                             <div class="detail-section" id="member-info">
-                                <div class="detail-section-header" 
-                                     on:click={() => toggleSection('member-info')}
-                                     role="button" 
-                                     tabindex="0"
-                                     aria-expanded={expandedSections['member-info']}>
+                                <div
+                                    class="detail-section-header"
+                                    on:click={() => toggleSection('member-info')}
+                                    role="button"
+                                    tabindex="0"
+                                    aria-expanded={expandedSections['member-info']}
+                                >
                                     <h3>Member Information</h3>
-                                    <i class="fas {expandedSections['member-info'] ? 'fa-chevron-down' : 'fa-chevron-right'} toggle-icon"></i>
+                                    <i
+                                        class="fas {expandedSections['member-info'] ? 'fa-chevron-down' : 'fa-chevron-right'} toggle-icon"
+                                    ></i>
                                 </div>
                                 {#if expandedSections['member-info']}
                                     <div class="detail-content">
@@ -217,13 +147,17 @@
 
                             <!-- Car Information -->
                             <div class="detail-section" id="car-info">
-                                <div class="detail-section-header" 
-                                     on:click={() => toggleSection('car-info')}
-                                     role="button" 
-                                     tabindex="0"
-                                     aria-expanded={expandedSections['car-info']}>
+                                <div
+                                    class="detail-section-header"
+                                    on:click={() => toggleSection('car-info')}
+                                    role="button"
+                                    tabindex="0"
+                                    aria-expanded={expandedSections['car-info']}
+                                >
                                     <h3>Car Information</h3>
-                                    <i class="fas {expandedSections['car-info'] ? 'fa-chevron-down' : 'fa-chevron-right'} toggle-icon"></i>
+                                    <i
+                                        class="fas {expandedSections['car-info'] ? 'fa-chevron-down' : 'fa-chevron-right'} toggle-icon"
+                                    ></i>
                                 </div>
                                 {#if expandedSections['car-info']}
                                     <div class="detail-content">
@@ -258,7 +192,9 @@
 
                         <!-- Transaction Summary -->
                         <div class="transaction-summary">
-                            <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-md); font-size: var(--font-size-lg); font-weight: 600;">Transaction Detail</h3>
+                            <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-md); font-size: var(--font-size-lg); font-weight: 600;">
+                                Quotation
+                            </h3>
                             {#each serviceData.transaction.items as item}
                                 <div class="service-item">
                                     <div class="service-title">{item.title}</div>
@@ -270,7 +206,7 @@
                                     {/each}
                                 </div>
                             {/each}
-                            <hr style="margin: var(--spacing-md) 0; border: none; border-top: 1px solid var(--border-color);">
+                            <hr style="margin: var(--spacing-md) 0; border: none; border-top: 1px solid var(--border-color);" />
                             <div class="transaction-item">
                                 <span>Subtotal</span>
                                 <span>{serviceData.transaction.subtotal}</span>
@@ -303,3 +239,219 @@
         {/if}
     </div>
 </main>
+
+<style>
+    .main-content {
+        padding: 20px;
+    }
+
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .page-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 30px;
+        height: 30px;
+        background: var(--primary-gradient);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: 600;
+    }
+
+    .section-header {
+        font-size: var(--font-size-xl);
+        margin-bottom: 20px;
+    }
+
+    .content-body {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 20px;
+        font-size: var(--font-size-md);
+    }
+
+    .content-card {
+        background: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-md);
+        padding: 20px;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .btn-back {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--primary-color);
+    }
+
+    .card-title {
+        font-size: var(--font-size-lg);
+        font-weight: 600;
+    }
+
+    .service-detail {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .detail-section {
+        margin-bottom: 20px;
+    }
+
+    .detail-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 10px;
+        background: var(--background-secondary);
+        border-radius: var(--radius-sm);
+    }
+
+    .detail-section-header h3 {
+        margin: 0;
+        font-size: var(--font-size-md);
+    }
+
+    .toggle-icon {
+        font-size: var(--font-size-sm);
+    }
+
+    .detail-content {
+        padding: 15px;
+        background: var(--background-light);
+        border-radius: var(--radius-sm);
+        margin-top: 10px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .detail-value {
+        color: var(--text-primary);
+    }
+
+    .transaction-summary {
+        flex: 1;
+        min-width: 300px;
+        padding: 20px;
+        background: var(--background-light);
+        border-radius: var(--radius-md);
+    }
+
+    .service-item {
+        margin-bottom: 15px;
+    }
+
+    .service-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .service-cost {
+        display: flex;
+        justify-content: space-between;
+        font-size: var(--font-size-sm);
+    }
+
+    .service-discount {
+        color: var(--danger-color);
+    }
+
+    .transaction-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: var(--font-size-sm);
+    }
+
+    .payment-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        background: var(--success-color);
+        border-radius: 50%;
+    }
+
+    .warranty-note {
+        margin-top: 10px;
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+    }
+
+    .btn {
+        padding: 10px;
+        border: none;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .btn-action {
+        background: var(--secondary-gradient);
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .service-detail {
+            flex-direction: column;
+        }
+
+        .transaction-summary {
+            min-width: 100%;
+        }
+    }
+</style>

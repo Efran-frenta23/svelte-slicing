@@ -1,475 +1,215 @@
-```svelte
 <script>
     import { onMount } from 'svelte';
 
-    // State management & data
-    let captains = [
-        { id: 1, name: 'Maryadi', employeeID: 'EMP-001', phone: '+6281211112222', workshop: 'Jakarta Branch' },
-        { id: 2, name: 'Slamet', employeeID: 'EMP-002', phone: '+6282133334444', workshop: 'Bandung Branch' },
-        { id: 3, name: 'Yanto', employeeID: 'EMP-003', phone: '+6283155556666', workshop: 'Surabaya Branch' }
-    ];
-    let currentPage = 1;
-    let searchTerm = '';
-    let showAddModal = false;
-    let showEditModal = false;
-    let editingCaptain = null;
-    let isLoading = false;
-    let formData = { name: '', employeeID: '', phone: '', workshop: '' };
-    let formErrors = {};
+    let captains = [];
+    let isLoading = true;
+    let errorMessage = '';
     let successMessage = '';
-    const itemsPerPage = 10;
 
-    // Workshop options
-    const workshopOptions = ['Jakarta Branch', 'Bandung Branch', 'Surabaya Branch'];
-
-    // Reactive: Search & filter
-    $: filteredCaptains = captains.filter(captain =>
-        captain.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        captain.employeeID.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        captain.phone.includes(searchTerm) ||
-        captain.workshop.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Reactive: Pagination
-    $: totalPages = Math.ceil(filteredCaptains.length / itemsPerPage);
-    $: paginatedCaptains = filteredCaptains.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
-
-    // Modal management
-    function openAddModal() {
-        resetForm();
-        showAddModal = true;
-        focusModal();
-    }
-
-    function openEditModal(captain) {
-        editingCaptain = { ...captain };
-        formData = { ...captain };
-        showEditModal = true;
-        focusModal();
-    }
-
-    function closeModal() {
-        showAddModal = false;
-        showEditModal = false;
-        editingCaptain = null;
-        formErrors = {};
-        successMessage = '';
-    }
-
-    // Form validation
-    const validationRules = {
-        name: /^[A-Za-z\s]{2,50}$/,
-        employeeID: /^EMP-[0-9]{3}$/,
-        phone: /^\+628[0-9]{8,12}$/
+    // Form state
+    let editingCaptain = null;
+    let showForm = false;
+    let formData = {
+        name: '',
+        employee_id: '',
+        phone: '',
+        workshop: ''
     };
 
-    function validateForm(formData) {
-        const errors = {};
-        if (!formData.name?.trim()) errors.name = 'Name is required';
-        else if (!validationRules.name.test(formData.name)) {
-            errors.name = 'Name must be 2-50 characters, letters only';
-        }
-        if (!formData.employeeID?.trim()) errors.employeeID = 'Employee ID is required';
-        else if (!validationRules.employeeID.test(formData.employeeID)) {
-            errors.employeeID = 'Employee ID format: EMP-XXX';
-        }
-        else if (captains.some(c => c.employeeID === formData.employeeID && c.id !== (editingCaptain?.id || 0))) {
-            errors.employeeID = 'Employee ID must be unique';
-        }
-        if (!formData.phone?.trim()) errors.phone = 'Phone is required';
-        else if (!validationRules.phone.test(formData.phone)) {
-            errors.phone = 'Phone format: +628XXXXXXXX';
-        }
-        if (!formData.workshop) errors.workshop = 'Workshop is required';
-        return errors;
-    }
+    const workshopOptions = ['Jakarta Branch', 'Bandung Branch', 'Surabaya Branch'];
 
-    // CRUD Operations
-    async function addCaptain() {
-        const errors = validateForm(formData);
-        if (Object.keys(errors).length > 0) {
-            formErrors = errors;
-            return;
-        }
-        isLoading = true;
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            const id = captains.length ? Math.max(...captains.map(c => c.id)) + 1 : 1;
-            captains = [...captains, { ...formData, id }];
-            showSuccess('Captain added successfully!');
-            closeModal();
-        } catch (err) {
-            formErrors = { general: 'Failed to add captain: ' + err.message };
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    async function updateCaptain() {
-        const errors = validateForm(formData);
-        if (Object.keys(errors).length > 0) {
-            formErrors = errors;
-            return;
-        }
-        isLoading = true;
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            captains = captains.map(captain =>
-                captain.id === editingCaptain.id ? { ...formData, id: captain.id } : captain
-            );
-            showSuccess('Captain updated successfully!');
-            closeModal();
-        } catch (err) {
-            formErrors = { general: 'Failed to update captain: ' + err.message };
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    function deleteCaptain(id) {
-        if (confirm('Are you sure you want to delete this captain?')) {
-            captains = captains.filter(captain => captain.id !== id);
-            showSuccess('Captain deleted successfully!');
-        }
-    }
-
-    // Success message
-    function showSuccess(message) {
-        successMessage = message;
-        setTimeout(() => successMessage = '', 3000);
-    }
-
-    // Reset form
-    function resetForm() {
-        formData = { name: '', employeeID: '', phone: '', workshop: '' };
-        formErrors = {};
-    }
-
-    // Pagination
-    function changePage(page) {
-        if (page === 'prev' && currentPage > 1) {
-            currentPage--;
-        } else if (page === 'next' && currentPage < totalPages) {
-            currentPage++;
-        } else if (typeof page === 'number') {
-            currentPage = page;
-        }
-    }
-
-    // Focus management
-    function focusModal() {
-        setTimeout(() => {
-            const firstInput = document.querySelector('.modal-content input');
-            if (firstInput) firstInput.focus();
-        }, 100);
-    }
-
-    // Keyboard shortcuts
-    onMount(() => {
-        function handleKeydown(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                document.querySelector('#searchInput')?.focus();
-            }
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-                e.preventDefault();
-                openAddModal();
-            }
-            if (e.key === 'Enter' && (showAddModal || showEditModal)) {
-                if (showAddModal) addCaptain();
-                if (showEditModal) updateCaptain();
-            }
-        }
-        document.addEventListener('keydown', handleKeydown);
-        return () => document.removeEventListener('keydown', handleKeydown);
+    onMount(async () => {
+        await loadCaptains();
     });
+
+    async function loadCaptains() {
+        isLoading = true;
+        errorMessage = '';
+        try {
+            const response = await fetch('/api/captains');
+            if (response.ok) {
+                captains = await response.json();
+            } else {
+                errorMessage = 'Failed to load captains';
+            }
+        } catch (err) {
+            errorMessage = 'Failed to load captains: ' + err.message;
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function openAddForm() {
+        editingCaptain = null;
+        formData = {
+            name: '',
+            employee_id: '',
+            phone: '',
+            workshop: ''
+        };
+        showForm = true;
+    }
+
+    function openEditForm(captain) {
+        editingCaptain = captain;
+        formData = {
+            name: captain.name,
+            employee_id: captain.employee_id || '',
+            phone: captain.phone || '',
+            workshop: captain.workshop || ''
+        };
+        showForm = true;
+    }
+
+    function closeForm() {
+        showForm = false;
+        editingCaptain = null;
+        formData = {
+            name: '',
+            employee_id: '',
+            phone: '',
+            workshop: ''
+        };
+    }
+
+    async function handleSubmit() {
+        errorMessage = '';
+        successMessage = '';
+
+        try {
+            const url = editingCaptain ? `/api/captains/${editingCaptain.id}` : '/api/captains';
+            const method = editingCaptain ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                successMessage = editingCaptain ? 'Captain updated successfully' : 'Captain added successfully';
+                setTimeout(() => successMessage = '', 3000);
+                await loadCaptains();
+                closeForm();
+            } else {
+                const error = await response.json();
+                errorMessage = 'Failed to save captain: ' + error.error;
+            }
+        } catch (err) {
+            errorMessage = 'Failed to save captain: ' + err.message;
+        }
+    }
+
+    async function handleDelete(captain) {
+        if (!confirm(`Are you sure you want to delete ${captain.name}?`)) return;
+
+        try {
+            const response = await fetch(`/api/captains/${captain.id}`, { method: 'DELETE' });
+            if (response.ok) {
+                successMessage = 'Captain deleted successfully';
+                setTimeout(() => successMessage = '', 3000);
+                await loadCaptains();
+            } else {
+                errorMessage = 'Failed to delete captain';
+            }
+        } catch (err) {
+            errorMessage = 'Failed to delete captain: ' + err.message;
+        }
+    }
 </script>
 
-<main class="main-content">
-    <div class="content-header">
-        <div class="page-title">
-            <i class="fas fa-user-tie"></i> Captain Management
-        </div>
-        <button class="btn btn-primary" on:click={openAddModal} aria-label="Add New Captain">
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-yellow-800">Captains Management</h1>
+        <button class="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-md flex items-center gap-2" on:click={openAddForm}>
             <i class="fas fa-plus"></i> Add Captain
         </button>
     </div>
 
-    <h1 class="section-header">Captain Overview</h1>
+    {#if errorMessage}
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">{errorMessage}</div>
+    {/if}
+    {#if successMessage}
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded">{successMessage}</div>
+    {/if}
 
-    <div class="content-card">
-        <div class="card-header">
-            <h2>Captains</h2>
-            <div class="search-container">
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search captains..." aria-label="Search Captains" bind:value={searchTerm}>
-                    <i class="fas fa-search"></i>
-                </div>
-            </div>
-        </div>
-        <div class="card-body">
-            {#if isLoading}
-                <div class="loading-spinner">Loading...</div>
-            {:else}
-                <div class="table-container">
-                    <table class="data-table" aria-label="Captains Table">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Name</th>
-                                <th>Employee ID</th>
-                                <th>Phone</th>
-                                <th>Workshop</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="captainsTable">
-                            {#each paginatedCaptains as captain}
-                                <tr>
-                                    <td>{captain.id}</td>
-                                    <td>{captain.name}</td>
-                                    <td>{captain.employeeID}</td>
-                                    <td>{captain.phone}</td>
-                                    <td>{captain.workshop}</td>
-                                    <td>
-                                        <button class="action-btn" on:click={() => openEditModal(captain)} aria-label="Edit Captain">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="action-btn error" on:click={() => deleteCaptain(captain.id)} aria-label="Delete Captain">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="pagination" role="navigation" aria-label="Pagination">
-                    <button on:click={() => changePage('prev')} aria-label="Previous Page" disabled={currentPage === 1}>
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
-                        <button class:active={page === currentPage} on:click={() => changePage(page)} aria-current={page === currentPage ? 'page' : null}>
-                            {page}
-                        </button>
+    {#if isLoading}
+        <div class="text-center py-8 text-gray-500">Loading captains...</div>
+    {:else}
+        <div class="bg-white rounded-lg shadow overflow-x-auto border border-gray-200">
+            <table class="w-full">
+                <thead class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Employee ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Phone</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Workshop</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each captains as captain}
+                        <tr class="border-b border-gray-200 hover:bg-yellow-50 transition-colors">
+                            <td class="px-4 py-3">{captain.id}</td>
+                            <td class="px-4 py-3">{captain.name}</td>
+                            <td class="px-4 py-3">{captain.employee_id || '-'}</td>
+                            <td class="px-4 py-3">{captain.phone || '-'}</td>
+                            <td class="px-4 py-3">{captain.workshop || '-'}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="px-3 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition-colors" on:click={() => openEditForm(captain)} aria-label="Edit Captain">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" on:click={() => handleDelete(captain)} aria-label="Delete Captain">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
                     {/each}
-                    <button on:click={() => changePage('next')} aria-label="Next Page" disabled={currentPage === totalPages}>
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            {/if}
-            {#if successMessage}
-                <div class="success-message">{successMessage}</div>
-            {/if}
-            {#if formErrors.general}
-                <div class="error-message">{formErrors.general}</div>
-            {/if}
-        </div>
-    </div>
-
-    <!-- Add Captain Modal -->
-    {#if showAddModal}
-        <div class="modal" role="dialog" aria-labelledby="addModalTitle">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="addModalTitle">Add New Captain</h2>
-                    <button on:click={closeModal} aria-label="Close Modal">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form on:submit|preventDefault={addCaptain}>
-                        <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" bind:value={formData.name} aria-required="true" aria-invalid={formErrors.name ? 'true' : 'false'} />
-                            {#if formErrors.name}
-                                <small style="color: red;">{formErrors.name}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="employeeID">Employee ID</label>
-                            <input type="text" id="employeeID" bind:value={formData.employeeID} aria-required="true" aria-invalid={formErrors.employeeID ? 'true' : 'false'} placeholder="EMP-XXX" />
-                            {#if formErrors.employeeID}
-                                <small style="color: red;">{formErrors.employeeID}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Phone</label>
-                            <input type="text" id="phone" bind:value={formData.phone} aria-required="true" aria-invalid={formErrors.phone ? 'true' : 'false'} placeholder="+628XXXXXXXX" />
-                            {#if formErrors.phone}
-                                <small style="color: red;">{formErrors.phone}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="workshop">Workshop</label>
-                            <select id="workshop" bind:value={formData.workshop} aria-required="true" aria-invalid={formErrors.workshop ? 'true' : 'false'}>
-                                <option value="">Select Workshop</option>
-                                {#each workshopOptions as workshop}
-                                    <option value={workshop}>{workshop}</option>
-                                {/each}
-                            </select>
-                            {#if formErrors.workshop}
-                                <small style="color: red;">{formErrors.workshop}</small>
-                            {/if}
-                        </div>
-                        <button type="submit" class="btn btn-primary" disabled={isLoading}>
-                            {isLoading ? 'Adding...' : 'Add Captain'}
-                        </button>
-                    </form>
-                </div>
-            </div>
+                </tbody>
+            </table>
         </div>
     {/if}
 
-    <!-- Edit Captain Modal -->
-    {#if showEditModal}
-        <div class="modal" role="dialog" aria-labelledby="editModalTitle">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="editModalTitle">Edit Captain</h2>
-                    <button on:click={closeModal} aria-label="Close Modal">
-                        <i class="fas fa-times"></i>
-                    </button>
+    {#if showForm}
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" on:click={closeForm}>
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden" on:click|stopPropagation>
+                <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                    <h2 class="text-xl font-bold text-yellow-800">{editingCaptain ? 'Edit Captain' : 'Add Captain'}</h2>
+                    <button class="text-gray-500 hover:text-gray-700 text-2xl" on:click={closeForm}>&times;</button>
                 </div>
-                <div class="modal-body">
-                    <form on:submit|preventDefault={updateCaptain}>
-                        <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" bind:value={formData.name} aria-required="true" aria-invalid={formErrors.name ? 'true' : 'false'} />
-                            {#if formErrors.name}
-                                <small style="color: red;">{formErrors.name}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="employeeID">Employee ID</label>
-                            <input type="text" id="employeeID" bind:value={formData.employeeID} aria-required="true" aria-invalid={formErrors.employeeID ? 'true' : 'false'} placeholder="EMP-XXX" />
-                            {#if formErrors.employeeID}
-                                <small style="color: red;">{formErrors.employeeID}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Phone</label>
-                            <input type="text" id="phone" bind:value={formData.phone} aria-required="true" aria-invalid={formErrors.phone ? 'true' : 'false'} placeholder="+628XXXXXXXX" />
-                            {#if formErrors.phone}
-                                <small style="color: red;">{formErrors.phone}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="workshop">Workshop</label>
-                            <select id="workshop" bind:value={formData.workshop} aria-required="true" aria-invalid={formErrors.workshop ? 'true' : 'false'}>
-                                <option value="">Select Workshop</option>
-                                {#each workshopOptions as workshop}
-                                    <option value={workshop}>{workshop}</option>
-                                {/each}
-                            </select>
-                            {#if formErrors.workshop}
-                                <small style="color: red;">{formErrors.workshop}</small>
-                            {/if}
-                        </div>
-                        <button type="submit" class="btn btn-primary" disabled={isLoading}>
-                            {isLoading ? 'Updating...' : 'Update Captain'}
+                <form on:submit|preventDefault={handleSubmit} class="p-4 space-y-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" id="name" bind:value={formData.name} required class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400" />
+                    </div>
+                    <div>
+                        <label for="employee_id" class="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+                        <input type="text" id="employee_id" bind:value={formData.employee_id} class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400" />
+                    </div>
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input type="text" id="phone" bind:value={formData.phone} class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400" />
+                    </div>
+                    <div>
+                        <label for="workshop" class="block text-sm font-medium text-gray-700 mb-1">Workshop</label>
+                        <select id="workshop" bind:value={formData.workshop} class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400">
+                            <option value="">Select Workshop</option>
+                            {#each workshopOptions as w}
+                                <option value={w}>{w}</option>
+                            {/each}
+                        </select>
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" on:click={closeForm}>Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all">
+                            {editingCaptain ? 'Update' : 'Add'} Captain
                         </button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     {/if}
-</main>
-
-<style>
-    .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .modal-content {
-        background: white;
-        padding: var(--spacing-lg);
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--spacing-md);
-    }
-    .form-group {
-        margin-bottom: var(--spacing-md);
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: var(--spacing-sm);
-    }
-    .form-group input, .form-group select {
-        width: 100%;
-        padding: var(--spacing-sm);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-    }
-    .loading-spinner {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--spacing-lg);
-    }
-    .loading-spinner::before {
-        content: '';
-        width: 24px;
-        height: 24px;
-        border: 3px solid var(--border-color);
-        border-top: 3px solid var(--text-primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .success-message {
-        color: green;
-        padding: var(--spacing-md);
-        text-align: center;
-    }
-    .error-message {
-        color: red;
-        padding: var(--spacing-md);
-        text-align: center;
-    }
-    .table-container {
-        overflow-x: auto;
-    }
-    .data-table {
-        width: 100%;
-        min-width: 600px;
-    }
-    .pagination button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    @media (max-width: 768px) {
-        .modal-content {
-            width: 95%;
-            padding: var(--spacing-md);
-        }
-        .content-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--spacing-sm);
-        }
-    }
-</style>
-```
+</div>

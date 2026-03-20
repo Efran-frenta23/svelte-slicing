@@ -1,149 +1,102 @@
-<main class="main-content" >
-    <div class="content-header">
-        <div class="page-title">
+<script>
+    import { onMount } from 'svelte';
+
+    let stats = {
+        totalData: 0,
+        serviceRevenue: 0,
+        totalServices: 0,
+        totalMembers: 0
+    };
+    let isLoading = true;
+
+    onMount(async () => {
+        await loadStats();
+    });
+
+    async function loadStats() {
+        isLoading = true;
+        try {
+            // Fetch stats from various endpoints
+            const [captains, brands, cars, spareparts] = await Promise.all([
+                fetch('/api/captains').then(r => r.ok ? r.json() : []),
+                fetch('/api/brands').then(r => r.ok ? r.json() : []),
+                fetch('/api/cars').then(r => r.ok ? r.json() : []),
+                fetch('/api/spareparts').then(r => r.ok ? r.json() : [])
+            ]);
+
+            stats = {
+                totalData: captains.length + brands.length + cars.length + spareparts.length,
+                serviceRevenue: 0, // Would need finance API
+                totalServices: captains.length,
+                totalMembers: 0 // Would need members API
+            };
+        } catch (err) {
+            console.error('Failed to load stats:', err);
+        } finally {
+            isLoading = false;
+        }
+    }
+</script>
+
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-yellow-800 flex items-center gap-3">
             <i class="fas fa-tachometer-alt"></i> Dashboard
-        </div>
-        <div class="user-info">
-            <div class="user-avatar">A</div>
+        </h1>
+        <div class="flex items-center gap-3 bg-white px-4 py-2 rounded-lg shadow">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-500 text-white flex items-center justify-center font-bold">A</div>
             <div>
-                <div style="font-size: var(--font-size-sm); font-weight: 600;">Autopulse</div>
-                <div style="font-size: var(--font-size-xs); opacity: 0.8;">Super Admin</div>
+                <div class="text-sm font-semibold text-yellow-800">Autopulse</div>
+                <div class="text-xs text-gray-500">Super Admin</div>
             </div>
-            <i class="fas fa-chevron-down" style="font-size: 10px; opacity: 0.8;"></i>
         </div>
     </div>
 
-    <h1 class="section-header">Homepage</h1>
+    <h2 class="text-xl font-bold text-gray-700 mb-4">Homepage</h2>
 
-    <div class="content-body">
+    {#if isLoading}
+        <div class="text-center py-8 text-gray-500">Loading dashboard...</div>
+    {:else}
         <!-- Overview Card -->
-        <div class="content-card">
-            <div class="card-body">
-                <div class="card-title">Overview</div>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Data Counts</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Service Revenue</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Service</div>
-                    </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Overview</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gradient-to-br from-yellow-400 to-yellow-500 text-white p-6 rounded-xl shadow-md">
+                    <div class="text-3xl font-bold">{stats.totalData}</div>
+                    <div class="text-sm opacity-90">Total Data</div>
+                </div>
+                <div class="bg-gradient-to-br from-green-400 to-green-500 text-white p-6 rounded-xl shadow-md">
+                    <div class="text-3xl font-bold">Rp {stats.serviceRevenue.toLocaleString()}</div>
+                    <div class="text-sm opacity-90">Service Revenue</div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-400 to-blue-500 text-white p-6 rounded-xl shadow-md">
+                    <div class="text-3xl font-bold">{stats.totalServices}</div>
+                    <div class="text-sm opacity-90">Total Services</div>
                 </div>
             </div>
         </div>
 
-        <!-- Payment Confirmation Card -->
-        <div class="content-card">
-            <div class="card-header">
-                <h2 class="card-title">Payment Confirmation</h2>
-                <div class="search-container">
-                    <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="Search payments..." aria-label="Search Payments">
-                        <i class="fas fa-search"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="card-subtitle">Pending Payments</div>
-                <div class="table-container">
-                    <table class="data-table" aria-label="Payment Confirmation Table">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Name</th>
-                                <th>VIN</th>
-                                <th>Service Date</th>
-                                <th>Customer</th>
-                                <th>Payment</th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentsTable">
-                            <tr>
-                                <td>1</td>
-                                <td>Toyota Vios</td>
-                                <td>12425533</td>
-                                <td>2025-05-20</td>
-                                <td>John Doe</td>
-                                <td><span class="status-badge status-pending">Waiting for payment</span></td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>Honda Civic</td>
-                                <td>12425534</td>
-                                <td>2025-05-21</td>
-                                <td>Jane Smith</td>
-                                <td><span class="status-badge status-pending">Waiting for payment</span></td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>Mazda 3</td>
-                                <td>12425535</td>
-                                <td>2025-05-22</td>
-                                <td>Bob Johnson</td>
-                                <td><span class="status-badge status-pending">Waiting for payment</span></td>
-                            </tr>
-                            <tr>
-                                <td>4</td>
-                                <td>Nissan Altima</td>
-                                <td>12425536</td>
-                                <td>2025-05-23</td>
-                                <td>Alice Brown</td>
-                                <td><span class="status-badge status-confirmed">Confirmed</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="text-align: right; margin-top: var(--spacing-lg);">
-                    <button class="btn btn-primary" aria-label="See More Payments">
-                        <i class="fas fa-arrow-right"></i> See more
-                    </button>
-                </div>
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <a href="/Captain" class="flex flex-col items-center justify-center p-6 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors group">
+                    <i class="fas fa-user-tie text-3xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm font-medium text-gray-700">Captains</span>
+                </a>
+                <a href="/Brand" class="flex flex-col items-center justify-center p-6 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors group">
+                    <i class="fas fa-car text-3xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm font-medium text-gray-700">Brands</span>
+                </a>
+                <a href="/Cars" class="flex flex-col items-center justify-center p-6 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors group">
+                    <i class="fas fa-list text-3xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm font-medium text-gray-700">Cars</span>
+                </a>
+                <a href="/Sparepart" class="flex flex-col items-center justify-center p-6 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors group">
+                    <i class="fas fa-cog text-3xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm font-medium text-gray-700">Spareparts</span>
+                </a>
             </div>
         </div>
-
-        <!-- Company Revenue Card -->
-        <div class="content-card">
-            <div class="card-body">
-                <div class="card-title">Company Revenue</div>
-                <div class="card-subtitle">Total: Rp 125.000.000</div>
-                <table class="revenue-table" aria-label="Company Revenue Table">
-                    <tbody>
-                        <tr>
-                            <td>
-                                <i class="fas fa-bolt" style="color: #f39c12; margin-right: var(--spacing-sm);"></i>
-                                Sparks Service
-                            </td>
-                            <td>Rp 25.000.000</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <i class="fas fa-oil-can" style="color: #e67e22; margin-right: var(--spacing-sm);"></i>
-                                Oil Change
-                            </td>
-                            <td>Rp 15.000.000</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <i class="fas fa-tint" style="color: #3498db; margin-right: var(--spacing-sm);"></i>
-                                Coolant
-                            </td>
-                            <td>Rp 10.000.000</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <i class="fas fa-spray-can" style="color: #2ecc71; margin-right: var(--spacing-sm);"></i>
-                                Washing Service
-                            </td>
-                            <td>Rp 5.000.000</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</main>
+    {/if}
+</div>

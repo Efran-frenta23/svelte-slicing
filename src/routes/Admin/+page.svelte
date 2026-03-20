@@ -1,19 +1,16 @@
 <script>
     import { onMount } from 'svelte';
+    import { fetchAll, update, remove } from '$lib/db';
 
-    // State management & data
-    let admins = [
-        { id: 1, name: 'Budi Santoso', email: 'budi@autopulse.com', role: 'Super Admin', workshop: 'Jakarta Branch', status: 'Active' },
-        { id: 2, name: 'Ani Wijaya', email: 'ani@autopulse.com', role: 'Admin', workshop: 'Bandung Branch', status: 'Active' },
-        { id: 3, name: 'Rudi Hartono', email: 'rudi@autopulse.com', role: 'Admin', workshop: 'Surabaya Branch', status: 'Inactive' }
-    ];
+    // State management
+    let admins = [];
     let currentPage = 1;
     let searchTerm = '';
-    let showAddModal = false;
     let showEditModal = false;
     let editingAdmin = null;
     let isLoading = false;
-    let errors = {};
+    let formData = { name: '', email: '', role: '', workshop: '', status: '' };
+    let formErrors = {};
     let successMessage = '';
     const itemsPerPage = 10;
 
@@ -22,11 +19,8 @@
     const workshopOptions = ['Jakarta Branch', 'Bandung Branch', 'Surabaya Branch'];
     const statusOptions = ['Active', 'Inactive'];
 
-    // Form data
-    let formData = { name: '', email: '', role: '', workshop: '', status: '', password: '' };
-
     // Reactive: Search & filter
-    $: filteredAdmins = admins.filter(admin => 
+    $: filteredAdmins = admins.filter(admin =>
         admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         admin.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -34,38 +28,43 @@
     // Reactive: Pagination
     $: totalPages = Math.ceil(filteredAdmins.length / itemsPerPage);
     $: paginatedAdmins = filteredAdmins.slice(
-        (currentPage - 1) * itemsPerPage, 
+        (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
-    // Modal functions
-    function openAddModal() {
-        resetForm();
-        showAddModal = true;
+    // Fetch admins
+    async function fetchAdmins() {
+        isLoading = true;
+        try {
+            admins = await fetchAll('admins', '*', { orderBy: 'id', order: 'ASC' });
+        } catch (err) {
+            formErrors = { general: 'Failed to fetch admins: ' + err.message };
+        } finally {
+            isLoading = false;
+        }
     }
 
+    // Modal handling
     function openEditModal(admin) {
         editingAdmin = { ...admin };
-        formData = { ...admin, password: '' };
+        formData = { ...admin };
         showEditModal = true;
+        focusModal();
     }
 
     function closeModals() {
-        showAddModal = false;
         showEditModal = false;
         editingAdmin = null;
-        errors = {};
+        formErrors = {};
         successMessage = '';
     }
 
     // Form validation
     function validateForm(data) {
         const errors = {};
-        if (!data.name.trim()) errors.name = 'Name is required';
-        if (!data.email.trim()) errors.email = 'Email is required';
+        if (!data.name?.trim()) errors.name = 'Name is required';
+        if (!data.email?.trim()) errors.email = 'Email is required';
         else if (!data.email.includes('@')) errors.email = 'Valid email is required';
-        if (showAddModal && !data.password?.trim()) errors.password = 'Password is required';
-        if (data.password && data.password.length < 6) errors.password = 'Password must be at least 6 characters';
         if (!data.role) errors.role = 'Role is required';
         if (!data.workshop) errors.workshop = 'Workshop is required';
         if (!data.status) errors.status = 'Status is required';
@@ -73,54 +72,40 @@
     }
 
     // CRUD Operations
-    async function handleAddAdmin() {
-        const validationErrors = validateForm(formData);
-        if (Object.keys(validationErrors).length > 0) {
-            errors = validationErrors;
-            return;
-        }
-        isLoading = true;
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            const newAdmin = {
-                id: admins.length ? Math.max(...admins.map(a => a.id)) + 1 : 1,
-                ...formData
-            };
-            admins = [...admins, newAdmin];
-            showSuccess('Admin added successfully!');
-            closeModals();
-        } catch (err) {
-            errors = { general: 'Failed to add admin: ' + err.message };
-        } finally {
-            isLoading = false;
-        }
-    }
-
     async function handleEditAdmin() {
-        const validationErrors = validateForm(formData);
-        if (Object.keys(validationErrors).length > 0) {
-            errors = validationErrors;
+        const errors = validateForm(formData);
+        if (Object.keys(errors).length > 0) {
+            formErrors = errors;
             return;
         }
         isLoading = true;
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            admins = admins.map(admin => 
-                admin.id === editingAdmin.id ? { ...admin, ...formData } : admin
-            );
+            await update('admins', editingAdmin.id, {
+                ...formData,
+                updated_at: new Date().toISOString()
+            });
+            await fetchAdmins();
             showSuccess('Admin updated successfully!');
             closeModals();
         } catch (err) {
-            errors = { general: 'Failed to update admin: ' + err.message };
+            formErrors = { general: 'Failed to update admin: ' + err.message };
         } finally {
             isLoading = false;
         }
     }
 
-    function deleteAdmin(id) {
+    async function deleteAdmin(id) {
         if (confirm('Are you sure you want to delete this admin?')) {
-            admins = admins.filter(admin => admin.id !== id);
-            showSuccess('Admin deleted successfully!');
+            isLoading = true;
+            try {
+                await remove('admins', id);
+                await fetchAdmins();
+                showSuccess('Admin deleted successfully!');
+            } catch (err) {
+                formErrors = { general: 'Failed to delete admin: ' + err.message };
+            } finally {
+                isLoading = false;
+            }
         }
     }
 
@@ -130,12 +115,6 @@
         setTimeout(() => successMessage = '', 3000);
     }
 
-    // Reset form
-    function resetForm() {
-        formData = { name: '', email: '', role: '', workshop: '', status: '', password: '' };
-        errors = {};
-    }
-
     // Pagination
     function changePage(page) {
         if (page >= 1 && page <= totalPages) {
@@ -143,8 +122,17 @@
         }
     }
 
+    // Focus management for modals
+    function focusModal() {
+        setTimeout(() => {
+            const firstInput = document.querySelector('.modal-content input');
+            if (firstInput) firstInput.focus();
+        }, 100);
+    }
+
     // Keyboard shortcuts
     onMount(() => {
+        fetchAdmins();
         function handleKeydown(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
@@ -153,9 +141,8 @@
             if (e.key === 'Escape') {
                 closeModals();
             }
-            if (e.key === 'Enter' && (showAddModal || showEditModal)) {
-                if (showAddModal) handleAddAdmin();
-                if (showEditModal) handleEditAdmin();
+            if (e.key === 'Enter' && showEditModal) {
+                handleEditAdmin();
             }
         }
         document.addEventListener('keydown', handleKeydown);
@@ -166,7 +153,7 @@
 <main class="main-content">
     <div class="content-header">
         <div class="page-title">
-            <i class="fas fa-user-plus"></i> Admin Registration
+            <i class="fas fa-user-plus"></i> Admin Management
         </div>
         <div class="user-info">
             <div class="user-avatar">A</div>
@@ -178,19 +165,14 @@
         </div>
     </div>
 
-    <h1 class="section-header">Admin Management</h1>
+    <h1 class="section-header">Admin Overview</h1>
 
     <div class="content-card">
         <div class="card-header">
             <h2>Admins</h2>
-            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search by Name or Email..." aria-label="Search Admins" bind:value={searchTerm}>
-                    <i class="fas fa-search"></i>
-                </div>
-                <button class="btn btn-primary" on:click={openAddModal} aria-label="Add New Admin">
-                    <i class="fas fa-plus"></i> Add Admin
-                </button>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by Name or Email..." aria-label="Search Admins" bind:value={searchTerm}>
+                <i class="fas fa-search"></i>
             </div>
         </div>
         <div class="card-body">
@@ -234,7 +216,7 @@
                     </table>
                 </div>
                 <div class="pagination" role="navigation" aria-label="Pagination">
-                    <button on:click={() => changePage(currentPage - 1)} aria-label="Previous Page">
+                    <button on:click={() => changePage(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous Page">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
@@ -242,7 +224,7 @@
                             {page}
                         </button>
                     {/each}
-                    <button on:click={() => changePage(currentPage + 1)} aria-label="Next Page">
+                    <button on:click={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next Page">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -250,87 +232,11 @@
             {#if successMessage}
                 <div class="success-message">{successMessage}</div>
             {/if}
-            {#if errors.general}
-                <div class="error-message">{errors.general}</div>
+            {#if formErrors.general}
+                <div class="error-message">{formErrors.general}</div>
             {/if}
         </div>
     </div>
-
-    <!-- Add Admin Modal -->
-    {#if showAddModal}
-        <div class="modal" role="dialog" aria-labelledby="addModalTitle">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="addModalTitle">Add New Admin</h2>
-                    <button on:click={closeModals} aria-label="Close Modal">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form on:submit|preventDefault={handleAddAdmin}>
-                        <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" bind:value={formData.name} aria-required="true" aria-invalid={errors.name ? 'true' : 'false'} />
-                            {#if errors.name}
-                                <small style="color: red;">{errors.name}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" bind:value={formData.email} aria-required="true" aria-invalid={errors.email ? 'true' : 'false'} />
-                            {#if errors.email}
-                                <small style="color: red;">{errors.email}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" id="password" bind:value={formData.password} aria-required="true" aria-invalid={errors.password ? 'true' : 'false'} />
-                            {#if errors.password}
-                                <small style="color: red;">{errors.password}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="role">Role</label>
-                            <select id="role" bind:value={formData.role} aria-required="true" aria-invalid={errors.role ? 'true' : 'false'}>
-                                <option value="">Select Role</option>
-                                {#each roleOptions as role}
-                                    <option value={role}>{role}</option>
-                                {/each}
-                            </select>
-                            {#if errors.role}
-                                <small style="color: red;">{errors.role}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="workshop">Workshop</label>
-                            <select id="workshop" bind:value={formData.workshop} aria-required="true" aria-invalid={errors.workshop ? 'true' : 'false'}>
-                                <option value="">Select Workshop</option>
-                                {#each workshopOptions as workshop}
-                                    <option value={workshop}>{workshop}</option>
-                                {/each}
-                            </select>
-                            {#if errors.workshop}
-                                <small style="color: red;">{errors.workshop}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="status">Status</label>
-                            <select id="status" bind:value={formData.status} aria-required="true" aria-invalidcloser
-                            <option value="">Select Status</option>
-                            {#each statusOptions as status}
-                                <option value={status}>{status}</option>
-                            {/each}
-                            </select>
-                            {#if errors.status}
-                                <small style="color: red;">{errors.status}</small>
-                            {/if}
-                        </div>
-                        <button type="submit" class="btn btn-primary">Add Admin</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    {/if}
 
     <!-- Edit Admin Modal -->
     {#if showEditModal}
@@ -345,63 +251,58 @@
                 <div class="modal-body">
                     <form on:submit|preventDefault={handleEditAdmin}>
                         <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" id="name" bind:value={formData.name} aria-required="true" aria-invalid={errors.name ? 'true' : 'false'} />
-                            {#if errors.name}
-                                <small style="color: red;">{errors.name}</small>
+                            <label for="editName">Name</label>
+                            <input type="text" id="editName" bind:value={formData.name} aria-required="true" aria-invalid={formErrors.name ? 'true' : 'false'} />
+                            {#if formErrors.name}
+                                <small style="color: red;">{formErrors.name}</small>
                             {/if}
                         </div>
                         <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" bind:value={formData.email} aria-required="true" aria-invalid={errors.email ? 'true' : 'false'} />
-                            {#if errors.email}
-                                <small style="color: red;">{errors.email}</small>
+                            <label for="editEmail">Email</label>
+                            <input type="email" id="editEmail" bind:value={formData.email} aria-required="true" aria-invalid={formErrors.email ? 'true' : 'false'} />
+                            {#if formErrors.email}
+                                <small style="color: red;">{formErrors.email}</small>
                             {/if}
                         </div>
                         <div class="form-group">
-                            <label for="password">Password (leave blank to keep unchanged)</label>
-                            <input type="password" id="password" bind:value={formData.password} aria-invalid={errors.password ? 'true' : 'false'} />
-                            {#if errors.password}
-                                <small style="color: red;">{errors.password}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="role">Role</label>
-                            <select id="role" bind:value={formData.role} aria-required="true" aria-invalid={errors.role ? 'true' : 'false'}>
+                            <label for="editRole">Role</label>
+                            <select id="editRole" bind:value={formData.role} aria-required="true" aria-invalid={formErrors.role ? 'true' : 'false'}>
                                 <option value="">Select Role</option>
                                 {#each roleOptions as role}
                                     <option value={role}>{role}</option>
                                 {/each}
                             </select>
-                            {#if errors.role}
-                                <small style="color: red;">{errors.role}</small>
+                            {#if formErrors.role}
+                                <small style="color: red;">{formErrors.role}</small>
                             {/if}
                         </div>
                         <div class="form-group">
-                            <label for="workshop">Workshop</label>
-                            <select id="workshop" bind:value={formData.workshop} aria-required="true" aria-invalid={errors.workshop ? 'true' : 'false'}>
+                            <label for="editWorkshop">Workshop</label>
+                            <select id="editWorkshop" bind:value={formData.workshop} aria-required="true" aria-invalid={formErrors.workshop ? 'true' : 'false'}>
                                 <option value="">Select Workshop</option>
                                 {#each workshopOptions as workshop}
                                     <option value={workshop}>{workshop}</option>
                                 {/each}
                             </select>
-                            {#if errors.workshop}
-                                <small style="color: red;">{errors.workshop}</small>
+                            {#if formErrors.workshop}
+                                <small style="color: red;">{formErrors.workshop}</small>
                             {/if}
                         </div>
                         <div class="form-group">
-                            <label for="status">Status</label>
-                            <select id="status" bind:value={formData.status} aria-required="true" aria-invalid={errors.status ? 'true' : 'false'}>
+                            <label for="editStatus">Status</label>
+                            <select id="editStatus" bind:value={formData.status} aria-required="true" aria-invalid={formErrors.status ? 'true' : 'false'}>
                                 <option value="">Select Status</option>
                                 {#each statusOptions as status}
                                     <option value={status}>{status}</option>
                                 {/each}
                             </select>
-                            {#if errors.status}
-                                <small style="color: red;">{errors.status}</small>
+                            {#if formErrors.status}
+                                <small style="color: red;">{formErrors.status}</small>
                             {/if}
                         </div>
-                        <button type="submit" class="btn btn-primary">Update Admin</button>
+                        <button type="submit" class="btn btn-primary" disabled={isLoading}>
+                            {isLoading ? 'Updating...' : 'Update Admin'}
+                        </button>
                     </form>
                 </div>
             </div>
@@ -420,6 +321,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
+
     }
     .modal-content {
         background: white;
@@ -453,10 +355,34 @@
         justify-content: center;
         padding: var(--spacing-lg);
     }
+    .loading-spinner::before {
+        content: '';
+        width: 24px;
+        height: 24px;
+        border: 3px solid #fff;
+        border-top: 3px solid var(--text-primary);
+        border-radius: 50%;
+        animation: spin 2s linear infinite;
+    }
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
     .success-message {
         color: green;
         padding: var(--spacing-md);
         text-align: center;
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     .error-message {
         color: red;
@@ -466,5 +392,27 @@
     .status-active {
         color: green;
         font-weight: bold;
+    }
+    .table-container {
+        overflow-x: auto;
+    }
+    .data-table {
+        width: 100%;
+        min-width: 600px;
+    }
+    .pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    @media (max-width: 768px) {
+        .modal-content {
+            width: 95%;
+            padding: var(--spacing-md);
+        }
+        .content-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+        }
     }
 </style>

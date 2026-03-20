@@ -1,467 +1,234 @@
 <script>
-    import { onMount } from 'svelte';
-  
-    // Reactive variables
-    let sidebarCollapsed = false;
-    let mobileMenuShow = false;
-    let currentPage = 1;
-    let sortColumn = 'id';
-    let sortDirection = 'asc';
+    export let data;
+    let serviceActivities = data?.serviceActivities || [];
+    let branches = data?.branches || [];
+    let captains = data?.captains || [];
     let searchTerm = '';
-  
-    // Sample service activity data
-    let serviceActivities = [
-      { id: 1, activity: 'Tire Replacement', customer: 'Anne', car: 'Toyota Rush', captain: 'Maryadi', status: 'In Progress' },
-      { id: 2, activity: 'Oil Change', customer: 'Budi', car: 'Honda Civic', captain: 'Slamet', status: 'Completed' },
-      { id: 3, activity: 'AC Service', customer: 'Citra', car: 'Chery Tiggo', captain: 'Yanto', status: 'In Progress' },
-      { id: 4, activity: 'Brake Service', customer: 'Doni', car: 'Toyota Avanza', captain: 'Maryadi', status: 'Pending' },
-      { id: 5, activity: 'Engine Check', customer: 'Eka', car: 'Honda Jazz', captain: 'Slamet', status: 'Completed' },
-      { id: 6, activity: 'Battery Replacement', customer: 'Fani', car: 'Suzuki Ertiga', captain: 'Yanto', status: 'In Progress' },
-      { id: 7, activity: 'Transmission Service', customer: 'Gani', car: 'Nissan March', captain: 'Maryadi', status: 'Pending' },
-      { id: 8, activity: 'Wheel Alignment', customer: 'Hani', car: 'Mitsubishi Xpander', captain: 'Slamet', status: 'Completed' }
-    ];
-  
-    // Navigation menu items
-    const menuItems = [
-      { href: 'index.html', icon: 'fas fa-tachometer-alt', label: 'Dashboard' },
-      { href: 'service.html', icon: 'fas fa-wrench', label: 'Service' },
-      { href: 'workshop.html', icon: 'fas fa-info-circle', label: 'Workshop Information' },
-      { href: 'member.html', icon: 'fas fa-users', label: 'Member' },
-      { href: 'captain.html', icon: 'fas fa-user-tie', label: 'Captain' },
-      { href: 'brand.html', icon: 'fas fa-car', label: 'Available Brand' },
-      { href: 'sparepart.html', icon: 'fas fa-cog', label: 'Spare Part' },
-      { href: 'carlist.html', icon: 'fas fa-list', label: 'Car List' },
-      { href: 'serviceactivity.html', icon: 'fas fa-clipboard-list', label: 'Service Activity', active: true },
-      { href: 'logbook.html', icon: 'fas fa-book', label: 'Logbook' },
-      { href: 'servicedetail.html', icon: 'fas fa-tools', label: 'Service Detail' },
-      { href: 'finance.html', icon: 'fas fa-dollar-sign', label: 'Finance' },
-      { href: 'promotion.html', icon: 'fas fa-percent', label: 'Promotion' },
-      { href: 'admin.html', icon: 'fas fa-user-plus', label: 'Admin Registration' }
-    ];
-  
-    // Reactive filtered and sorted activities
-    $: filteredActivities = serviceActivities.filter(activity =>
-      activity.activity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.car.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.captain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.status.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  
-    $: sortedActivities = [...filteredActivities].sort((a, b) => {
-      let valA = a[sortColumn];
-      let valB = b[sortColumn];
-      if (sortColumn === 'id') {
-        valA = parseInt(valA);
-        valB = parseInt(valB);
-      }
-      const comparison = valA < valB ? -1 : valA > valB ? 1 : 0;
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  
-    // Functions
-    function toggleSidebar() {
-      sidebarCollapsed = !sidebarCollapsed;
-    }
-  
-    function toggleMobileMenu() {
-      mobileMenuShow = !mobileMenuShow;
-    }
-  
-    function handleSort(column) {
-      if (sortColumn === column) {
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortColumn = column;
-        sortDirection = 'asc';
-      }
-    }
-  
-    function changePage(page) {
-      if (page === 'prev' && currentPage > 1) {
-        currentPage--;
-      } else if (page === 'next' && currentPage < 10) {
-        currentPage++;
-      } else if (typeof page === 'number') {
-        currentPage = page;
-      }
-    }
-  
-    function handleKeydown(event) {
-      if (event.key === 'Escape') {
-        if (!sidebarCollapsed) {
-          toggleSidebar();
-        } else if (mobileMenuShow) {
-          toggleMobileMenu();
-        }
-      }
-      if (event.key === 'ArrowLeft') {
-        changePage('prev');
-      }
-      if (event.key === 'ArrowRight') {
-        changePage('next');
-      }
-    }
-  
-    function getSortIcon(column) {
-      if (sortColumn !== column) return 'fas fa-sort';
-      return sortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
-    }
-  
-    function getStatusClass(status) {
-      switch(status.toLowerCase()) {
-        case 'completed': return 'status-completed';
-        case 'in progress': return 'status-inprogress';
-        case 'pending': return 'status-pending';
-        default: return 'status-default';
-      }
-    }
-  
-    onMount(() => {
-      // Set initial active page
-      currentPage = 1;
-    });
-  </script>
-  
-  <svelte:window on:keydown={handleKeydown} />
-  
-  <svelte:head>
-    <meta name="description" content="Autopulse Dashboard - Service Activity">
-    <title>Autopulse - Service Activity</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  </svelte:head>
-  
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <button on:click={toggleSidebar} aria-label="Toggle Sidebar" class="toggle-btn">
-        <i class="fas fa-bars"></i>
-      </button>
-      <a href="Dashboard" aria-label="Autopulse Dashboard" class="brand">
-        <i class="fas fa-car"></i> Autopulse
-      </a>
-      <nav aria-label="Breadcrumb" class="breadcrumb">
-        <a href="Home">Home</a>
-        <i class="fas fa-chevron-right"></i>
-        <span>Service Activity</span>
-      </nav>
-    </div>
-    <div class="header-right">
-      <button aria-label="Notifications" class="notification-btn">
-        <i class="fas fa-bell"></i>
-      </button>
-      <div aria-label="User Profile" class="user-profile">
-        <div class="user-avatar">A</div>
-        <div class="user-info">
-          <div class="user-name">Autopulse</div>
-          <div class="user-role">Super Admin</div>
-        </div>
-        <i class="fas fa-chevron-down"></i>
-      </div>
-    </div>
-  </header>
-  
+    let selectedBranch = '';
+    let selectedCaptain = '';
+    let selectedDate = '';
+    let currentPage = 1;
+    const itemsPerPage = 10;
 
-  
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="content-header">
-        <div class="page-title">
-          <i class="fas fa-clipboard-list"></i> Service Activity
-        </div>
-        <div class="user-info">
-          <div class="user-avatar">A</div>
-          <div>
-            <div class="user-name">Autopulse</div>
-            <div class="user-role">Super Admin</div>
-          </div>
-          <i class="fas fa-chevron-down"></i>
-        </div>
-      </div>
-  
-      <h1 class="section-header">Service Activity</h1>
-  
-      <div class="content-body">
-        <!-- Service Activities Card -->
-        <div class="content-card">
-          <div class="card-header">
-            <h2 class="card-title">Service Activities</h2>
-            <div class="total-count">
-              Total Activities: {serviceActivities.length}
+    // Reactive filtered and paginated activities
+    $: filteredActivities = serviceActivities.filter(activity =>
+        (!selectedBranch || activity.branch === selectedBranch) &&
+        (!selectedCaptain || activity.captain_id?.toString() === selectedCaptain) &&
+        (!selectedDate || (activity.service_date && new Date(activity.service_date).toISOString().split('T')[0] === selectedDate)) &&
+        ((activity.member_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+         (activity.license_number || '').toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    $: paginatedActivities = filteredActivities.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    $: totalPages = Math.ceil(filteredActivities.length / itemsPerPage) || 1;
+
+    // Handle search
+    function handleSearch(event) {
+        searchTerm = event.target.value;
+        currentPage = 1;
+    }
+
+    // Handle filter changes
+    function handleFilterChange() {
+        currentPage = 1;
+    }
+
+    // Pagination
+    function goToPage(page) {
+        if (page >= 1 && page <= totalPages) {
+            currentPage = page;
+        }
+    }
+</script>
+
+<svelte:head>
+    <title>Autopulse - Service Activity</title>
+    <meta name="description" content="Autopulse Dashboard - Service Activity" />
+</svelte:head>
+
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-yellow-800 flex items-center gap-3">
+            <i class="fas fa-clipboard-list"></i> Service Activity
+        </h1>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-search mr-2"></i>Search
+                </label>
+                <input
+                    type="text"
+                    placeholder="Member name or license plate"
+                    bind:value={searchTerm}
+                    on:input={handleSearch}
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
+                />
             </div>
-          </div>
-          <div class="card-body">
-            <div class="search-container">
-              <div class="search-box">
-                <input 
-                  type="text" 
-                  bind:value={searchTerm}
-                  placeholder="Search by Activity, Customer, Car, Captain, or Status..." 
-                  aria-label="Search Service Activities"
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-building mr-2"></i>Branch
+                </label>
+                <select
+                    bind:value={selectedBranch}
+                    on:change={handleFilterChange}
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
                 >
-                <i class="fas fa-search"></i>
-              </div>
+                    <option value="">All Branches</option>
+                    {#each branches as branch}
+                        <option value={branch.workshop_name || branch.id}>{branch.workshop_name || 'Unknown'}</option>
+                    {/each}
+                </select>
             </div>
-            <div class="table-container">
-              <table class="data-table" aria-label="Service Activities Table">
-                <thead>
-                  <tr>
-                    <th on:click={() => handleSort('id')} data-sort="id">
-                      No <i class={getSortIcon('id')}></i>
-                    </th>
-                    <th on:click={() => handleSort('activity')} data-sort="activity">
-                      Activity <i class={getSortIcon('activity')}></i>
-                    </th>
-                    <th on:click={() => handleSort('customer')} data-sort="customer">
-                      Customer <i class={getSortIcon('customer')}></i>
-                    </th>
-                    <th on:click={() => handleSort('car')} data-sort="car">
-                      Car <i class={getSortIcon('car')}></i>
-                    </th>
-                    <th on:click={() => handleSort('captain')} data-sort="captain">
-                      Captain <i class={getSortIcon('captain')}></i>
-                    </th>
-                    <th on:click={() => handleSort('status')} data-sort="status">
-                      Status <i class={getSortIcon('status')}></i>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each sortedActivities as activity, index}
-                    <tr>
-                      <td>{index + 1}</td>
-                      <td>{activity.activity}</td>
-                      <td>{activity.customer}</td>
-                      <td>{activity.car}</td>
-                      <td>{activity.captain}</td>
-                      <td>
-                        <span class="status-badge {getStatusClass(activity.status)}">
-                          {activity.status}
-                        </span>
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-user-tie mr-2"></i>Captain
+                </label>
+                <select
+                    bind:value={selectedCaptain}
+                    on:change={handleFilterChange}
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
+                >
+                    <option value="">All Captains</option>
+                    {#each captains as captain}
+                        <option value={captain.id}>{captain.name}</option>
+                    {/each}
+                </select>
             </div>
-            <div class="pagination" role="navigation" aria-label="Pagination">
-              <button on:click={() => changePage('prev')} aria-label="Previous Page">
-                <i class="fas fa-chevron-left"></i>
-              </button>
-              <button on:click={() => changePage(1)} class:active={currentPage === 1}>1</button>
-              <button on:click={() => changePage(2)} class:active={currentPage === 2}>2</button>
-              <button on:click={() => changePage(3)} class:active={currentPage === 3}>3</button>
-              <button on:click={() => changePage(4)} class:active={currentPage === 4}>4</button>
-              <span>...</span>
-              <button on:click={() => changePage(10)} class:active={currentPage === 10}>10</button>
-              <button on:click={() => changePage('next')} aria-label="Next Page">
-                <i class="fas fa-chevron-right"></i>
-              </button>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-calendar mr-2"></i>Date
+                </label>
+                <input
+                    type="date"
+                    bind:value={selectedDate}
+                    on:change={handleFilterChange}
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
+                />
             </div>
-          </div>
         </div>
-      </div>
-    </main>
-  </div>
-  
-  <style>
-    :global(*) {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-  
-    :global(body) {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      color: white;
-    }
-  
-    /* Header Styles */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 2rem;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    }
-  
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-  
-    .toggle-btn, .notification-btn, .close-btn {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 0.5rem;
-      transition: background-color 0.3s;
-    }
-  
-    .toggle-btn:hover, .notification-btn:hover, .close-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-  
-    .brand {
-      color: white;
-      text-decoration: none;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
-  
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-    }
-  
-    .breadcrumb a {
-      color: rgba(255, 255, 255, 0.8);
-      text-decoration: none;
-    }
-  
-    .breadcrumb a:hover {
-      color: white;
-    }
-  
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-  
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      cursor: pointer;
-    }
-  
-    .user-avatar {
-      width: 2.5rem;
-      height: 2.5rem;
-      background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-    }
-  
-    .user-info .user-name {
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-  
-    .user-info .user-role {
-      font-size: 0.75rem;
-      opacity: 0.8;
-    }
-  
-    /* Dashboard Container */
-    .dashboard-container {
-      display: flex;
-      min-height: calc(100vh - 80px);
-    }
-  
-    /* Sidebar Styles */
-    .sidebar {
-      width: 280px;
-      background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(10px);
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
-      transition: width 0.3s ease;
-    }
-  
-    .sidebar.collapsed {
-      width: 80px;
-    }
-  
-    .sidebar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-  
-    .sidebar-brand {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: white;
-    }
-  
-    .nav-menu {
-      list-style: none;
-      padding: 1rem 0;
-    }
-  
-    .nav-menu li {
-      margin-bottom: 0.5rem;
-    }
-  
-    .nav-menu a {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.75rem 1rem;
-      color: rgba(255, 255, 255, 0.8);
-      text-decoration: none;
-      transition: all 0.3s;
-      margin: 0 0.5rem;
-      border-radius: 0.5rem;
-    }
-  
-    .nav-menu a:hover, .nav-menu a.active {
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-    }
-  
-    /* Main Content */
-    .main-content {
-      flex: 1;
-      padding: 2rem;
-      overflow-y: auto;
-    }
-  
-    .content-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-  
-    .page-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-  
-    .section-header {
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 2rem;
-    }
-  
-    .content-body {
-      animation: fadeIn 0.5s ease-in;
-    }
-  
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  
-  </style>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded-xl shadow-lg p-4 mb-6">
+        <div class="flex justify-between items-center">
+            <span class="text-lg font-semibold">
+                <i class="fas fa-list mr-2"></i>
+                Showing {filteredActivities.length} of {serviceActivities.length} activities
+            </span>
+            {#if searchTerm || selectedBranch || selectedCaptain || selectedDate}
+                <button
+                    on:click={() => { searchTerm = ''; selectedBranch = ''; selectedCaptain = ''; selectedDate = ''; }}
+                    class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors font-semibold"
+                >
+                    <i class="fas fa-times mr-2"></i>Clear Filters
+                </button>
+            {/if}
+        </div>
+    </div>
+
+    <!-- Content -->
+    {#if filteredActivities.length === 0}
+        <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+            <i class="fas fa-clipboard-list text-6xl text-gray-300 mb-6"></i>
+            <h3 class="text-2xl font-bold text-gray-700 mb-3">
+                {searchTerm || selectedBranch || selectedCaptain || selectedDate ? 'No Matching Activities' : 'No Service Activities Yet'}
+            </h3>
+            <p class="text-gray-500 text-lg">
+                {searchTerm || selectedBranch || selectedCaptain || selectedDate 
+                    ? 'Try adjusting your filters to find what you\'re looking for.'
+                    : 'Service activities will appear here once they are created.'}
+            </p>
+        </div>
+    {:else}
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Member</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Vehicle</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Branch</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Captain</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each paginatedActivities as activity}
+                            <tr class="border-b border-gray-200 hover:bg-yellow-50 transition-colors">
+                                <td class="px-6 py-4 text-gray-600">
+                                    {activity.service_date ? new Date(activity.service_date).toLocaleDateString() : '-'}
+                                </td>
+                                <td class="px-6 py-4 font-semibold text-gray-800">
+                                    {activity.member_name || 'Unknown'}
+                                </td>
+                                <td class="px-6 py-4 text-gray-600">
+                                    {activity.license_number || activity.car || '-'}
+                                </td>
+                                <td class="px-6 py-4 text-gray-600">
+                                    {activity.branch_name || '-'}
+                                </td>
+                                <td class="px-6 py-4 text-gray-600">
+                                    {activity.captain_name || '-'}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1.5 rounded-full text-sm font-semibold
+                                        {activity.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                         activity.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                                         activity.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                         'bg-gray-100 text-gray-700'}">
+                                        {activity.status || 'Pending'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <a
+                                        href="/Service-activity/Service-detail/{activity.id}"
+                                        class="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-md inline-flex items-center gap-2"
+                                    >
+                                        <i class="fas fa-eye"></i> View Details
+                                    </a>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {#if totalPages > 1}
+            <div class="flex justify-center gap-2 mt-6">
+                <button
+                    on:click={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    class="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg hover:bg-yellow-50 hover:border-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+                >
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
+                    <button
+                        on:click={() => goToPage(page)}
+                        class="px-4 py-2 rounded-lg font-semibold transition-all {page === currentPage ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md' : 'bg-white border-2 border-gray-200 hover:bg-yellow-50 hover:border-yellow-400'}"
+                    >
+                        {page}
+                    </button>
+                {/each}
+                <button
+                    on:click={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    class="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg hover:bg-yellow-50 hover:border-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+                >
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        {/if}
+    {/if}
+</div>

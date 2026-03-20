@@ -1,424 +1,198 @@
-```svelte
 <script>
     import { onMount } from 'svelte';
 
-    // State management
-    let brands = [
-        { id: 1, brandName: 'Toyota', country: 'Japan', models: 'Corolla, Camry, Yaris' },
-        { id: 2, brandName: 'Honda', country: 'Japan', models: 'Civic, Accord, CR-V' },
-        { id: 3, brandName: 'Chery', country: 'China', models: 'Tiggo, Arrizo' }
-    ];
-    let currentPage = 1;
-    let searchTerm = '';
-    let showAddModal = false;
-    let showEditModal = false;
-    let editingBrand = null;
-    let isLoading = false;
-    let formData = { brandName: '', country: '', models: '' };
-    let formErrors = {};
+    let brands = [];
+    let isLoading = true;
+    let errorMessage = '';
     let successMessage = '';
-    const itemsPerPage = 10;
 
-    // Reactive: Search & filter
-    $: filteredBrands = brands.filter(brand =>
-        brand.brandName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        brand.country.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Form state
+    let editingBrand = null;
+    let showForm = false;
+    let formData = {
+        brand_name: '',
+        country: '',
+        models: ''
+    };
 
-    // Reactive: Pagination
-    $: totalPages = Math.ceil(filteredBrands.length / itemsPerPage);
-    $: paginatedBrands = filteredBrands.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
-
-    // Modal handling
-    function openAddModal() {
-        resetForm();
-        showAddModal = true;
-        focusModal();
-    }
-
-    function openEditModal(brand) {
-        editingBrand = { ...brand };
-        formData = { ...brand };
-        showEditModal = true;
-        focusModal();
-    }
-
-    function closeModals() {
-        showAddModal = false;
-        showEditModal = false;
-        editingBrand = null;
-        formErrors = {};
-        successMessage = '';
-    }
-
-    // Form validation
-    function validateForm(data) {
-        const errors = {};
-        if (!data.brandName?.trim()) errors.brandName = 'Brand name is required';
-        if (!data.country?.trim()) errors.country = 'Country is required';
-        if (!data.models?.trim()) errors.models = 'Supported models are required';
-        if (brands.some(b => b.brandName === data.brandName && b.id !== (editingBrand?.id || 0))) {
-            errors.brandName = 'Brand name must be unique';
-        }
-        return errors;
-    }
-
-    // CRUD Operations
-    async function handleAddBrand() {
-        const errors = validateForm(formData);
-        if (Object.keys(errors).length > 0) {
-            formErrors = errors;
-            return;
-        }
-        isLoading = true;
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            const newBrand = {
-                id: brands.length ? Math.max(...brands.map(b => b.id)) + 1 : 1,
-                ...formData
-            };
-            brands = [...brands, newBrand];
-            showSuccess('Brand added successfully!');
-            closeModals();
-        } catch (err) {
-            formErrors = { general: 'Failed to add brand: ' + err.message };
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    async function handleEditBrand() {
-        const errors = validateForm(formData);
-        if (Object.keys(errors).length > 0) {
-            formErrors = errors;
-            return;
-        }
-        isLoading = true;
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            brands = brands.map(brand =>
-                brand.id === editingBrand.id ? { ...brand, ...formData } : brand
-            );
-            showSuccess('Brand updated successfully!');
-            closeModals();
-        } catch (err) {
-            formErrors = { general: 'Failed to update brand: ' + err.message };
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    function deleteBrand(id) {
-        if (confirm('Are you sure you want to delete this brand?')) {
-            brands = brands.filter(brand => brand.id !== id);
-            showSuccess('Brand deleted successfully!');
-        }
-    }
-
-    // Success message
-    function showSuccess(message) {
-        successMessage = message;
-        setTimeout(() => successMessage = '', 3000);
-    }
-
-    // Reset form
-    function resetForm() {
-        formData = { brandName: '', country: '', models: '' };
-        formErrors = {};
-    }
-
-    // Pagination
-    function changePage(page) {
-        if (page >= 1 && page <= totalPages) {
-            currentPage = page;
-        }
-    }
-
-    // Focus management for modals
-    function focusModal() {
-        setTimeout(() => {
-            const firstInput = document.querySelector('.modal-content input');
-            if (firstInput) firstInput.focus();
-        }, 100);
-    }
-
-    // Keyboard shortcuts
-    onMount(() => {
-        function handleKeydown(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                document.getElementById('searchInput')?.focus();
-            }
-            if (e.key === 'Escape') {
-                closeModals();
-            }
-            if (e.key === 'Enter' && (showAddModal || showEditModal)) {
-                if (showAddModal) handleAddBrand();
-                if (showEditModal) handleEditBrand();
-            }
-        }
-        document.addEventListener('keydown', handleKeydown);
-        return () => document.removeEventListener('keydown', handleKeydown);
+    onMount(async () => {
+        await loadBrands();
     });
+
+    async function loadBrands() {
+        isLoading = true;
+        errorMessage = '';
+        try {
+            const response = await fetch('/api/brands');
+            if (response.ok) {
+                brands = await response.json();
+            } else {
+                errorMessage = 'Failed to load brands';
+            }
+        } catch (err) {
+            errorMessage = 'Failed to load brands: ' + err.message;
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function openAddForm() {
+        editingBrand = null;
+        formData = {
+            brand_name: '',
+            country: '',
+            models: ''
+        };
+        showForm = true;
+    }
+
+    function openEditForm(brand) {
+        editingBrand = brand;
+        formData = {
+            brand_name: brand.brand_name,
+            country: brand.country || '',
+            models: brand.models || ''
+        };
+        showForm = true;
+    }
+
+    function closeForm() {
+        showForm = false;
+        editingBrand = null;
+        formData = {
+            brand_name: '',
+            country: '',
+            models: ''
+        };
+    }
+
+    async function handleSubmit() {
+        errorMessage = '';
+        successMessage = '';
+
+        try {
+            const url = editingBrand ? `/api/brands/${editingBrand.id}` : '/api/brands';
+            const method = editingBrand ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                successMessage = editingBrand ? 'Brand updated successfully' : 'Brand added successfully';
+                setTimeout(() => successMessage = '', 3000);
+                await loadBrands();
+                closeForm();
+            } else {
+                const error = await response.json();
+                errorMessage = 'Failed to save brand: ' + error.error;
+            }
+        } catch (err) {
+            errorMessage = 'Failed to save brand: ' + err.message;
+        }
+    }
+
+    async function handleDelete(brand) {
+        if (!confirm(`Are you sure you want to delete ${brand.brand_name}?`)) return;
+
+        try {
+            const response = await fetch(`/api/brands/${brand.id}`, { method: 'DELETE' });
+            if (response.ok) {
+                successMessage = 'Brand deleted successfully';
+                setTimeout(() => successMessage = '', 3000);
+                await loadBrands();
+            } else {
+                errorMessage = 'Failed to delete brand';
+            }
+        } catch (err) {
+            errorMessage = 'Failed to delete brand: ' + err.message;
+        }
+    }
 </script>
 
-<main class="main-content">
-    <div class="content-header">
-        <div class="page-title">
-            <i class="fas fa-car"></i> Available Brand
-        </div>
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-yellow-800">Brands Management</h1>
+        <button class="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-md flex items-center gap-2" on:click={openAddForm}>
+            <i class="fas fa-plus"></i> Add Brand
+        </button>
     </div>
 
-    <h1 class="section-header">Available Brands</h1>
+    {#if errorMessage}
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">{errorMessage}</div>
+    {/if}
+    {#if successMessage}
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded">{successMessage}</div>
+    {/if}
 
-    <div class="content-card">
-        <div class="card-header">
-            <h2>Car Brands</h2>
-            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search by Brand Name or Country..." aria-label="Search Brands" bind:value={searchTerm}>
-                    <i class="fas fa-search"></i>
-                </div>
-                <button class="btn btn-primary" on:click={openAddModal} aria-label="Add New Brand">
-                    <i class="fas fa-plus"></i> Add Brand
-                </button>
-            </div>
-        </div>
-        <div class="card-body">
-            {#if isLoading}
-                <div class="loading-spinner">Loading...</div>
-            {:else}
-                <div>Total Brands: {filteredBrands.length}</div>
-                <div class="table-container">
-                    <table class="data-table" aria-label="Brands Table">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Brand Name</th>
-                                <th>Country</th>
-                                <th>Supported Models</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="brandsTable">
-                            {#each paginatedBrands as brand}
-                                <tr>
-                                    <td>{brand.id}</td>
-                                    <td>{brand.brandName}</td>
-                                    <td>{brand.country}</td>
-                                    <td>{brand.models}</td>
-                                    <td>
-                                        <button class="action-btn" on:click={() => openEditModal(brand)} aria-label="Edit Brand">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="action-btn error" on:click={() => deleteBrand(brand.id)} aria-label="Delete Brand">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="pagination" role="navigation" aria-label="Pagination">
-                    <button on:click={() => changePage(currentPage - 1)} aria-label="Previous Page" disabled={currentPage === 1}>
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
-                        <button class:active={page === currentPage} on:click={() => changePage(page)} aria-current={page === currentPage ? 'page' : null}>
-                            {page}
-                        </button>
+    {#if isLoading}
+        <div class="text-center py-8 text-gray-500">Loading brands...</div>
+    {:else}
+        <div class="bg-white rounded-lg shadow overflow-x-auto border border-gray-200">
+            <table class="w-full">
+                <thead class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Brand Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Country</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Models</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each brands as brand}
+                        <tr class="border-b border-gray-200 hover:bg-yellow-50 transition-colors">
+                            <td class="px-4 py-3">{brand.id}</td>
+                            <td class="px-4 py-3">{brand.brand_name}</td>
+                            <td class="px-4 py-3">{brand.country || '-'}</td>
+                            <td class="px-4 py-3">{brand.models || '-'}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="px-3 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition-colors" on:click={() => openEditForm(brand)} aria-label="Edit Brand">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" on:click={() => handleDelete(brand)} aria-label="Delete Brand">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
                     {/each}
-                    <button on:click={() => changePage(currentPage + 1)} aria-label="Next Page" disabled={currentPage === totalPages}>
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            {/if}
-            {#if successMessage}
-                <div class="success-message">{successMessage}</div>
-            {/if}
-            {#if formErrors.general}
-                <div class="error-message">{formErrors.general}</div>
-            {/if}
-        </div>
-    </div>
-
-    <!-- Add Brand Modal -->
-    {#if showAddModal}
-        <div class="modal" role="dialog" aria-labelledby="addModalTitle">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="addModalTitle">Add New Brand</h2>
-                    <button on:click={closeModals} aria-label="Close Modal">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form on:submit|preventDefault={handleAddBrand}>
-                        <div class="form-group">
-                            <label for="brandName">Brand Name</label>
-                            <input type="text" id="brandName" bind:value={formData.brandName} aria-required="true" aria-invalid={formErrors.brandName ? 'true' : 'false'} />
-                            {#if formErrors.brandName}
-                                <small style="color: red;">{formErrors.brandName}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="country">Country</label>
-                            <input type="text" id="country" bind:value={formData.country} aria-required="true" aria-invalid={formErrors.country ? 'true' : 'false'} />
-                            {#if formErrors.country}
-                                <small style="color: red;">{formErrors.country}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="models">Supported Models</label>
-                            <input type="text" id="models" bind:value={formData.models} aria-required="true" aria-invalid={formErrors.models ? 'true' : 'false'} placeholder="e.g., Corolla, Camry, Yaris" />
-                            {#if formErrors.models}
-                                <small style="color: red;">{formErrors.models}</small>
-                            {/if}
-                        </div>
-                        <button type="submit" class="btn btn-primary" disabled={isLoading}>
-                            {isLoading ? 'Adding...' : 'Add Brand'}
-                        </button>
-                    </form>
-                </div>
-            </div>
+                </tbody>
+            </table>
         </div>
     {/if}
 
-    <!-- Edit Brand Modal -->
-    {#if showEditModal}
-        <div class="modal" role="dialog" aria-labelledby="editModalTitle">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="editModalTitle">Edit Brand</h2>
-                    <button on:click={closeModals} aria-label="Close Modal">
-                        <i class="fas fa-times"></i>
-                    </button>
+    {#if showForm}
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" on:click={closeForm}>
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden" on:click|stopPropagation>
+                <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                    <h2 class="text-xl font-bold text-yellow-800">{editingBrand ? 'Edit Brand' : 'Add Brand'}</h2>
+                    <button class="text-gray-500 hover:text-gray-700 text-2xl" on:click={closeForm}>&times;</button>
                 </div>
-                <div class="modal-body">
-                    <form on:submit|preventDefault={handleEditBrand}>
-                        <div class="form-group">
-                            <label for="brandName">Brand Name</label>
-                            <input type="text" id="brandName" bind:value={formData.brandName} aria-required="true" aria-invalid={formErrors.brandName ? 'true' : 'false'} />
-                            {#if formErrors.brandName}
-                                <small style="color: red;">{formErrors.brandName}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="country">Country</label>
-                            <input type="text" id="country" bind:value={formData.country} aria-required="true" aria-invalid={formErrors.country ? 'true' : 'false'} />
-                            {#if formErrors.country}
-                                <small style="color: red;">{formErrors.country}</small>
-                            {/if}
-                        </div>
-                        <div class="form-group">
-                            <label for="models">Supported Models</label>
-                            <input type="text" id="models" bind:value={formData.models} aria-required="true" aria-invalid={formErrors.models ? 'true' : 'false'} placeholder="e.g., Corolla, Camry, Yaris" />
-                            {#if formErrors.models}
-                                <small style="color: red;">{formErrors.models}</small>
-                            {/if}
-                        </div>
-                        <button type="submit" class="btn btn-primary" disabled={isLoading}>
-                            {isLoading ? 'Updating...' : 'Update Brand'}
+                <form on:submit|preventDefault={handleSubmit} class="p-4 space-y-4">
+                    <div>
+                        <label for="brand_name" class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                        <input type="text" id="brand_name" bind:value={formData.brand_name} required class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400" />
+                    </div>
+                    <div>
+                        <label for="country" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                        <input type="text" id="country" bind:value={formData.country} class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400" />
+                    </div>
+                    <div>
+                        <label for="models" class="block text-sm font-medium text-gray-700 mb-1">Models</label>
+                        <textarea id="models" bind:value={formData.models} rows="3" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-yellow-400"></textarea>
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors" on:click={closeForm}>Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all">
+                            {editingBrand ? 'Update' : 'Add'} Brand
                         </button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     {/if}
-</main>
-
-<style>
-    .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .modal-content {
-        background: white;
-        padding: var(--spacing-lg);
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--spacing-md);
-    }
-    .form-group {
-        margin-bottom: var(--spacing-md);
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: var(--spacing-sm);
-    }
-    .form-group input {
-        width: 100%;
-        padding: var(--spacing-sm);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-    }
-    .loading-spinner {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--spacing-lg);
-    }
-    .loading-spinner::before {
-        content: '';
-        width: 24px;
-        height: 24px;
-        border: 3px solid var(--border-color);
-        border-top: 3px solid var(--text-primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .success-message {
-        color: green;
-        padding: var(--spacing-md);
-        text-align: center;
-    }
-    .error-message {
-        color: red;
-        padding: var(--spacing-md);
-        text-align: center;
-    }
-    .table-container {
-        overflow-x: auto;
-    }
-    .data-table {
-        width: 100%;
-        min-width: 600px;
-    }
-    .pagination button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    @media (max-width: 768px) {
-        .modal-content {
-            width: 95%;
-            padding: var(--spacing-md);
-        }
-        .content-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--spacing-sm);
-        }
-    }
-</style>
-```
+</div>
