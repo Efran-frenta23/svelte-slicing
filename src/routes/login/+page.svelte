@@ -290,11 +290,4 @@
   </div>
 </div>
 
-<style>
-  .eye-icon {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-  }
-</style>
+

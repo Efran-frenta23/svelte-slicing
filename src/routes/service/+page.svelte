@@ -1,5 +1,6 @@
 <script>
     import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
     import { writable } from 'svelte/store';
     
     // Store untuk state
@@ -181,7 +182,7 @@
                 </thead>
                 <tbody id="servicesTable">
                     {#each paginatedServices as service}
-                        <tr>
+                        <tr style="cursor: pointer;" on:click={() => goto(`/service/${service.id}/activity`)}>
                             <td>{service.id}</td>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -197,8 +198,8 @@
                                 </div>
                             </td>
                             <td>
-                                <button class="action-btn" aria-label="Edit Service" on:click={() => showModal('editServiceModal')}>
-                                    <i class="fas fa-edit"></i>
+                                <button class="action-btn" aria-label="View Activities" on:click|stopPropagation={() => goto(`/service/${service.id}/activity`)}>
+                                    <i class="fas fa-list"></i>
                                 </button>
                             </td>
                         </tr>
@@ -251,123 +252,3 @@
     </div>
 {/if}
 
-<style>
-    /* Modal styles */
-    .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
-    
-    .modal-content {
-        background: white;
-        padding: 20px;
-        border-radius: var(--radius-md);
-        width: 90%;
-        max-width: 500px;
-        max-height: 90vh;
-        overflow-y: auto;
-    }
-    
-    .modal-content form {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    .modal-content h3 {
-        margin: 0 0 10px 0;
-        color: var(--text-primary);
-    }
-    
-    .modal-content label {
-        font-weight: 500;
-        color: var(--text-primary);
-    }
-    
-    .modal-content input {
-        padding: 12px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        font-size: var(--font-size-sm);
-    }
-    
-    .modal-content input:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
-    }
-    
-    .button-group {
-        display: flex;
-        gap: 10px;
-        margin-top: 10px;
-    }
-    
-    .modal-content button {
-        flex: 1;
-        padding: 12px;
-        border: none;
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .modal-content button[type="submit"] {
-        background: var(--primary-gradient);
-        color: white;
-    }
-    
-    .modal-content button[type="submit"]:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
-    }
-    
-    .modal-content button[type="submit"]:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-    
-    .modal-content button[type="button"] {
-        background: var(--text-secondary);
-        color: white;
-    }
-    
-    .modal-content button[type="button"]:hover {
-        background: var(--text-primary);
-    }
-    
-    .active {
-        font-weight: bold;
-        background: var(--primary-gradient);
-        color: white;
-    }
-    
-    /* Responsive design */
-    @media (max-width: 768px) {
-        .content-card {
-            padding: 10px;
-        }
-        
-        .table-container {
-            overflow-x: auto;
-        }
-        
-        .modal-content {
-            margin: 20px;
-            width: calc(100% - 40px);
-        }
-        
-        .button-group {
-            flex-direction: column;
-        }
-    }
-</style>

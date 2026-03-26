@@ -1,90 +1,155 @@
-import { createUser, authenticateUser, createSession, validateEmail, getEffectiveRole, canHaveAdminRole } from '$lib/auth';
+import { createUser, authenticateUser, createSession, validateEmail } from '$lib/auth';
+import { validatePasswordStrength } from '$lib/password';
+import { loginSchema, registerSchema } from '$lib/validators';
+import { validateRequest } from '$lib/security';
+import { authLogger, auditLogger } from '$lib/logger';
 import { fail, redirect } from '@sveltejs/kit';
 
-export async function load() {
+export async function load({ cookies }) {
+  // Clear old Supabase cookies
+  const supabaseCookies = [
+    'sb-qxdylfidszktvbbyxiey-auth-token.0',
+    'sb-qxdylfidszktvbbyxiey-auth-token.1',
+    'sb-sfcbffrpowginbtvtjqd-auth-token.0',
+    'sb-sfcbffrpowginbtvtjqd-auth-token.1'
+  ];
+  
+  for (const cookieName of supabaseCookies) {
+    cookies.delete(cookieName, { path: '/' });
+  }
+  
   return {};
 }
 
 export const actions = {
-  login: async ({ request, cookies }) => {
+  login: async ({ request, cookies, getClientAddress, locals }) => {
     const data = await request.formData();
     const email = data.get('email');
     const password = data.get('password');
+    const csrfToken = data.get('csrf_token');
 
-    if (!email || !password) {
-      return fail(400, { error: 'Email dan password diperlukan' });
+    // Verify CSRF token
+    if (!csrfToken || csrfToken !== locals.csrfToken) {
+      auditLogger.warn({
+        event: 'CSRF_VALIDATION_FAILED',
+        email,
+        ipAddress: getClientAddress(),
+      }, 'CSRF token validation failed');
+      
+      return fail(403, { 
+        error: 'Invalid CSRF token. Please refresh and try again.'
+      });
     }
 
-    if (!validateEmail(email)) {
-      return fail(400, { error: 'Email tidak valid' });
+    // Validate with Zod
+    const validation = validateRequest(loginSchema, { email, password });
+    if (!validation.success) {
+      return fail(400, { 
+        error: 'Validation failed',
+        details: validation.errors 
+      });
     }
 
-    const result = await authenticateUser(email, password);
+    const ipAddress = getClientAddress();
+    
+    try {
+      const result = await authenticateUser(email, password, ipAddress);
 
-    if (result.error) {
-      return fail(401, { error: result.error });
+      if (result.error) {
+        authLogger.warn({ email, ipAddress }, 'Login failed');
+        return fail(401, { error: result.error });
+      }
+
+      // Create session in Redis with IP tracking
+      const session = createSession(result.user.id, {
+        ...result.user,
+        ip_address: ipAddress
+      }, ipAddress, request.headers.get('user-agent'));
+      
+      cookies.set('autopulse-session', session.id, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7,
+        secure: process.env.NODE_ENV === 'production'
+      });
+
+      auditLogger.info({
+        event: 'LOGIN_SUCCESS',
+        userId: result.user.id,
+        email,
+        ipAddress,
+      }, 'User logged in successfully');
+
+      throw redirect(303, '/Dashboard');
+    } catch (error) {
+      if (error instanceof redirect) throw error;
+      
+      authLogger.error({ error: error.message, email, ipAddress }, 'Login error');
+      return fail(500, { error: 'Login failed. Please try again.' });
     }
-
-    // Create session
-    const session = createSession(result.user.id, result.user);
-    cookies.set('session', session.id, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7,
-      secure: false
-    });
-
-    throw redirect(303, '/Dashboard');
   },
 
-  register: async ({ request }) => {
+  register: async ({ request, cookies, getClientAddress }) => {
     const data = await request.formData();
-    const name = data.get('name');
-    const email = data.get('email');
-    const password = data.get('password');
-    const confirmPassword = data.get('confirmPassword');
-    const role = data.get('role') || 'Member';
-    const workshop = data.get('workshop');
-    const status = data.get('status');
-
-    if (!name?.trim()) {
-      return fail(400, { error: 'Nama diperlukan' });
-    }
-
-    if (!validateEmail(email)) {
-      return fail(400, { error: 'Email tidak valid' });
-    }
-
-    if (password !== confirmPassword) {
-      return fail(400, { error: 'Password dan konfirmasi password tidak cocok' });
-    }
-
-    if (password.length < 6) {
-      return fail(400, { error: 'Password harus minimal 6 karakter' });
-    }
-
-    // Get effective role - only admin emails can have admin roles
-    const effectiveRole = getEffectiveRole(email, role);
+    const ipAddress = getClientAddress();
     
-    // Only admin emails need workshop and status
-    const needsWorkshopStatus = effectiveRole === 'Admin' || effectiveRole === 'Super Admin';
+    // Validate with Zod
+    const validation = validateRequest(registerSchema, Object.fromEntries(data));
+    if (!validation.success) {
+      return fail(400, { 
+        error: 'Validation failed',
+        details: validation.errors 
+      });
+    }
+
+    const { name, email, password, role, workshop, status } = validation.data;
+
+    // Additional password strength check
+    const passwordStrength = validatePasswordStrength(password);
+    if (!passwordStrength.valid) {
+      return fail(400, { 
+        error: 'Password too weak',
+        details: passwordStrength.errors,
+        strength: passwordStrength.strength
+      });
+    }
 
     try {
       const result = await createUser({
         email,
         password,
         name,
-        role: effectiveRole,
-        workshop: needsWorkshopStatus ? (workshop || 'Jakarta Branch') : null,
-        status: needsWorkshopStatus ? (status || 'Active') : 'Active'
+        role,
+        workshop: (role === 'Admin' || role === 'Super Admin') ? workshop : null,
+        status: (role === 'Admin' || role === 'Super Admin') ? status : 'Active',
+        ipAddress
       });
+
+      // Clear old Supabase cookies
+      const supabaseCookies = [
+        'sb-qxdylfidszktvbbyxiey-auth-token.0',
+        'sb-qxdylfidszktvbbyxiey-auth-token.1',
+        'sb-sfcbffrpowginbtvtjqd-auth-token.0',
+        'sb-sfcbffrpowginbtvtjqd-auth-token.1'
+      ];
+      
+      for (const cookieName of supabaseCookies) {
+        cookies.delete(cookieName, { path: '/' });
+      }
+
+      auditLogger.info({
+        event: 'REGISTRATION_SUCCESS',
+        userId: result.user.id,
+        email,
+        ipAddress,
+      }, 'User registered successfully');
 
       return {
         success: 'Pendaftaran berhasil! Silakan login dengan akun Anda.'
       };
     } catch (error) {
-      console.error('Registration error:', error);
+      authLogger.error({ error: error.message, email }, 'Registration error');
 
       if (error.code === '23505') {
         return fail(400, { error: 'Email sudah terdaftar. Silakan login atau gunakan email lain.' });

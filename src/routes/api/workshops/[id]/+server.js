@@ -3,19 +3,18 @@ import { json } from '@sveltejs/kit';
 
 export async function PUT({ params, request, locals }) {
   try {
-    // Only Admin and Super Admin can update captains
     const user = locals.user;
     if (!user || (user.role !== 'Admin' && user.role !== 'Super Admin')) {
-      return json({ error: 'Only Admin or Super Admin can edit captains' }, { status: 403 });
+      return json({ error: 'Only Admin or Super Admin can edit workshops' }, { status: 403 });
     }
 
     const { id } = params;
     const data = await request.json();
-    const captain = await update('captains', id, {
+    const workshop = await update('workshops', id, {
       ...data,
       updated_at: new Date().toISOString()
     });
-    return json(captain);
+    return json(workshop);
   } catch (error) {
     return json({ error: error.message }, { status: 500 });
   }
@@ -23,14 +22,13 @@ export async function PUT({ params, request, locals }) {
 
 export async function DELETE({ params, locals }) {
   try {
-    // Only Admin and Super Admin can delete captains
     const user = locals.user;
     if (!user || (user.role !== 'Admin' && user.role !== 'Super Admin')) {
-      return json({ error: 'Only Admin or Super Admin can delete captains' }, { status: 403 });
+      return json({ error: 'Only Admin or Super Admin can delete workshops' }, { status: 403 });
     }
 
     const { id } = params;
-    await remove('captains', id);
+    await remove('workshops', id);
     return json({ success: true });
   } catch (error) {
     return json({ error: error.message }, { status: 500 });

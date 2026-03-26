@@ -1,6 +1,9 @@
 <script>
     import { onMount } from 'svelte';
 
+    export let data;
+    let userRole = data?.userRole || 'Member';
+
     let captains = [];
     let isLoading = true;
     let errorMessage = '';
@@ -17,6 +20,9 @@
     };
 
     const workshopOptions = ['Jakarta Branch', 'Bandung Branch', 'Surabaya Branch'];
+
+    // Admin check
+    $: isAdmin = userRole === 'Admin' || userRole === 'Super Admin';
 
     onMount(async () => {
         await loadCaptains();
@@ -121,9 +127,11 @@
 <div class="p-6">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-yellow-800">Captains Management</h1>
-        <button class="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-md flex items-center gap-2" on:click={openAddForm}>
-            <i class="fas fa-plus"></i> Add Captain
-        </button>
+        {#if isAdmin}
+            <button class="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all shadow-md flex items-center gap-2" on:click={openAddForm}>
+                <i class="fas fa-plus"></i> Add Captain
+            </button>
+        {/if}
     </div>
 
     {#if errorMessage}
@@ -145,7 +153,9 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Employee ID</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Phone</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Workshop</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
+                        {#if isAdmin}
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
+                        {/if}
                     </tr>
                 </thead>
                 <tbody>
@@ -156,16 +166,18 @@
                             <td class="px-4 py-3">{captain.employee_id || '-'}</td>
                             <td class="px-4 py-3">{captain.phone || '-'}</td>
                             <td class="px-4 py-3">{captain.workshop || '-'}</td>
-                            <td class="px-4 py-3">
-                                <div class="flex gap-2">
-                                    <button class="px-3 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition-colors" on:click={() => openEditForm(captain)} aria-label="Edit Captain">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" on:click={() => handleDelete(captain)} aria-label="Delete Captain">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            {#if isAdmin}
+                                <td class="px-4 py-3">
+                                    <div class="flex gap-2">
+                                        <button class="px-3 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition-colors" on:click={() => openEditForm(captain)} aria-label="Edit Captain">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" on:click={() => handleDelete(captain)} aria-label="Delete Captain">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            {/if}
                         </tr>
                     {/each}
                 </tbody>

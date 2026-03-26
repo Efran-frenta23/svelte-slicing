@@ -234,55 +234,77 @@
         <div>
             <div>
                 <table aria-label="Members Table">
-                    <thead>
+                    <thead class="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
                         <tr>
-                            <th scope="col">ID</th>
-                            <th scope="col">Name</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Membership</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">Actions</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Email</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Membership</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {#each paginatedMembers as member (member.id)}
-                            <tr>
-                                <td>{member.id}</td>
-                                <td>{member.name}</td>
-                                <td>{member.email}</td>
-                                <td>{member.membership}</td>
-                                <td>
-                                    <span>
+                            <tr class="border-b border-gray-200 hover:bg-blue-50 transition-colors">
+                                <td class="px-6 py-4">{member.id}</td>
+                                <td class="px-6 py-4">{member.name}</td>
+                                <td class="px-6 py-4">{member.email}</td>
+                                <td class="px-6 py-4">{member.membership}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1.5 rounded-full text-sm font-semibold
+                                        {member.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
                                         {member.status}
                                     </span>
                                 </td>
-                                <td>
-                                    <button 
-                                        on:click={() => openEditModal(member)}
-                                        aria-label={`Edit ${member.name}`}
-                                    >
-                                        <i aria-hidden="true"></i>
-                                    </button>
-                                    <button 
-                                        on:click={() => toggleStatus(member)}
-                                        aria-label={`Toggle status for ${member.name}`}
-                                    >
-                                        <i aria-hidden="true"></i>
-                                    </button>
-                                    <button 
-                                        on:click={() => deleteMember(member)}
-                                        aria-label={`Delete ${member.name}`}
-                                    >
-                                        <i aria-hidden="true"></i>
-                                    </button>
+                                <td class="px-6 py-4">
+                                    <div class="flex gap-2">
+                                        <button
+                                            on:click={() => openEditModal(member)}
+                                            aria-label={`Edit ${member.name}`}
+                                            class="px-3 py-1.5 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition-colors"
+                                        >
+                                            <i class="fas fa-edit" aria-hidden="true"></i>
+                                        </button>
+                                        <button
+                                            on:click={() => toggleStatus(member)}
+                                            aria-label={`Toggle status for ${member.name}`}
+                                            class="px-3 py-1.5 bg-green-400 text-white rounded hover:bg-green-500 transition-colors"
+                                        >
+                                            <i class="fas fa-sync" aria-hidden="true"></i>
+                                        </button>
+                                        <button
+                                            on:click={() => deleteMember(member)}
+                                            aria-label={`Delete ${member.name}`}
+                                            class="px-3 py-1.5 bg-red-400 text-white rounded hover:bg-red-500 transition-colors"
+                                        >
+                                            <i class="fas fa-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         {:else}
                             <tr>
-                                <td colspan="6">
-                                    {searchTerm || filterStatus !== 'All' 
-                                        ? 'No members found matching your criteria.' 
-                                        : 'No members available.'}
+                                <td colspan="6" class="px-6 py-16 text-center">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <i class="fas fa-users text-6xl text-gray-300 mb-4" aria-hidden="true"></i>
+                                        <h3 class="text-xl font-bold text-gray-700 mb-2">
+                                            {searchTerm || filterStatus !== 'All' ? 'No members found' : 'Belum ada Member'}
+                                        </h3>
+                                        <p class="text-gray-500 mb-6">
+                                            {searchTerm || filterStatus !== 'All' 
+                                                ? 'Try adjusting your search or filter criteria.'
+                                                : 'Tambahkan member pertama Anda untuk memulai'}
+                                        </p>
+                                        {#if !searchTerm && filterStatus === 'All'}
+                                            <button
+                                                on:click={openAddModal}
+                                                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md"
+                                            >
+                                                <i class="fas fa-plus mr-2" aria-hidden="true"></i>Tambah Member Pertama
+                                            </button>
+                                        {/if}
+                                    </div>
                                 </td>
                             </tr>
                         {/each}

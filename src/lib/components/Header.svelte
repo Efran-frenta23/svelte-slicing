@@ -51,35 +51,5 @@
   </div>
 </header>
 
-<style>
-  @media (max-width: 1024px) {
-    .header {
-      padding: 0 16px;
-      height: 64px;
-    }
 
-    .menu-toggle {
-      display: block;
-    }
 
-    .logo-text {
-      display: none;
-    }
-
-    .breadcrumb {
-      display: none;
-    }
-
-    .user-details {
-      display: none;
-    }
-
-    .user-menu > .fa-chevron-down {
-      display: none;
-    }
-
-    .header-right {
-      gap: 2px;
-    }
-  }
-</style>

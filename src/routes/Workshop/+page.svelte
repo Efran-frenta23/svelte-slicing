@@ -1,7 +1,11 @@
 <script>
     import { onMount } from 'svelte';
 
-    // State for sidebar, modals, and data
+    export let data;
+
+    // State
+    let workshops = data.workshops || [];
+    let userRole = data.userRole || 'Member';
     let isSidebarCollapsed = false;
     let isAnimating = false;
     let showAddModal = false;
@@ -10,40 +14,45 @@
     let searchTerm = '';
     let currentPage = 1;
     const itemsPerPage = 5;
-    let isLoading = true;
-
-    // Workshop data
-    let workshops = [
-        { id: 1, name: 'Jakarta Branch', location: 'Jakarta', contact: '+62 21 1234 5678', captain: 'Maryadi' },
-        { id: 2, name: 'Bandung Branch', location: 'Bandung', contact: '+62 22 8765 4321', captain: 'Slamet' },
-        { id: 3, name: 'Surabaya Branch', location: 'Surabaya', contact: '+62 31 5678 1234', captain: 'Yanto' },
-    ];
+    let isLoading = false;
+    let successMessage = '';
+    let errorMessage = '';
 
     // Form data for add/edit
     let formData = { name: '', location: '', contact: '', captain: '' };
     let formErrors = {};
 
+    // Admin check
+    $: isAdmin = userRole === 'Admin' || userRole === 'Super Admin';
+
     // Reactive: Filtered workshops based on search
     $: filteredWorkshops = workshops.filter(row =>
-        row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.captain.toLowerCase().includes(searchTerm.toLowerCase())
+        (row.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (row.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (row.contact || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (row.captain || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Reactive: Pagination
-    $: totalPages = Math.ceil(filteredWorkshops.length / itemsPerPage);
+    $: totalPages = Math.ceil(filteredWorkshops.length / itemsPerPage) || 1;
     $: paginatedWorkshops = filteredWorkshops.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
-    // Sidebar toggle
-    function toggleSidebar() {
-        if (isAnimating) return;
-        isAnimating = true;
-        isSidebarCollapsed = !isSidebarCollapsed;
-        setTimeout(() => { isAnimating = false; }, 300);
+    // Load workshops from API
+    async function loadWorkshops() {
+        isLoading = true;
+        try {
+            const response = await fetch('/api/workshops');
+            if (response.ok) {
+                workshops = await response.json();
+            }
+        } catch (error) {
+            errorMessage = 'Failed to load workshops: ' + error.message;
+        } finally {
+            isLoading = false;
+        }
     }
 
     // Modal handling
@@ -73,41 +82,82 @@
         return errors;
     }
 
-    // Form submission
-    function handleAddWorkshop() {
+    // Form submission via API
+    async function handleAddWorkshop() {
         const errors = validateForm(formData);
         if (Object.keys(errors).length > 0) {
             formErrors = errors;
             return;
         }
-        workshops = [...workshops, {
-            id: workshops.length + 1,
-            name: formData.name,
-            location: formData.location,
-            contact: formData.contact,
-            captain: formData.captain
-        }];
-        console.log('Workshop added successfully!');
-        hideModal();
-        resetForm();
+        try {
+            const response = await fetch('/api/workshops', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            if (response.ok) {
+                successMessage = 'Workshop added successfully!';
+                setTimeout(() => successMessage = '', 3000);
+                await loadWorkshops();
+                hideModal();
+                resetForm();
+            } else {
+                const result = await response.json();
+                errorMessage = result.error || 'Error adding workshop';
+                setTimeout(() => errorMessage = '', 3000);
+            }
+        } catch (error) {
+            errorMessage = 'Error adding workshop: ' + error.message;
+            setTimeout(() => errorMessage = '', 3000);
+        }
     }
 
-    function handleEditWorkshop() {
+    async function handleEditWorkshop() {
         const errors = validateForm(formData);
         if (Object.keys(errors).length > 0) {
             formErrors = errors;
             return;
         }
-        workshops = workshops.map(w =>
-            w.id === editingWorkshop.id ? { ...w, ...formData } : w
-        );
-        console.log('Workshop updated successfully!');
-        hideModal();
+        try {
+            const response = await fetch(`/api/workshops/${editingWorkshop.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            if (response.ok) {
+                successMessage = 'Workshop updated successfully!';
+                setTimeout(() => successMessage = '', 3000);
+                await loadWorkshops();
+                hideModal();
+            } else {
+                const result = await response.json();
+                errorMessage = result.error || 'Error updating workshop';
+                setTimeout(() => errorMessage = '', 3000);
+            }
+        } catch (error) {
+            errorMessage = 'Error updating workshop: ' + error.message;
+            setTimeout(() => errorMessage = '', 3000);
+        }
     }
 
-    function deleteWorkshop(id) {
-        if (confirm('Are you sure you want to delete this workshop?')) {
-            workshops = workshops.filter(w => w.id !== id);
+    async function deleteWorkshop(id) {
+        if (!confirm('Are you sure you want to delete this workshop?')) return;
+        try {
+            const response = await fetch(`/api/workshops/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                successMessage = 'Workshop deleted successfully!';
+                setTimeout(() => successMessage = '', 3000);
+                await loadWorkshops();
+            } else {
+                const result = await response.json();
+                errorMessage = result.error || 'Error deleting workshop';
+                setTimeout(() => errorMessage = '', 3000);
+            }
+        } catch (error) {
+            errorMessage = 'Error deleting workshop: ' + error.message;
+            setTimeout(() => errorMessage = '', 3000);
         }
     }
 
@@ -120,7 +170,7 @@
     // Edit handler
     function handleEdit(workshop) {
         editingWorkshop = workshop;
-        formData = { ...workshop };
+        formData = { name: workshop.name, location: workshop.location, contact: workshop.contact, captain: workshop.captain };
         showModal('edit');
     }
 
@@ -142,96 +192,116 @@
             if (e.key === 'Escape') {
                 hideModal();
             }
-            if (e.key === 'Enter' && (showAddModal || showEditModal)) {
-                if (showAddModal) handleAddWorkshop();
-                if (showEditModal) handleEditWorkshop();
-            }
         }
-
-        // Simulate loading
-        setTimeout(() => {
-            isLoading = false;
-        }, 1000);
 
         document.addEventListener('keydown', handleKeydown);
         return () => document.removeEventListener('keydown', handleKeydown);
     });
 </script>
 
-
+<svelte:head>
+    <title>Autopulse - Workshop Management</title>
+    <meta name="description" content="Autopulse Dashboard - Workshop Management" />
+</svelte:head>
 
 <main class="main-content">
     <div class="content-header">
         <div class="page-title">
-            <i class="fas fa-info-circle"></i> Workshop Information
+            <i class="fas fa-warehouse"></i> Workshop Management
         </div>
-        <button class="btn btn-primary" on:click={() => showModal('add')} aria-label="Add New Workshop">
-            <i class="fas fa-plus"></i> Add Workshop
-        </button>
+        <div class="user-info">
+            <div class="user-avatar">A</div>
+            <div>
+                <div style="font-size: var(--font-size-sm); font-weight: 600;">Autopulse</div>
+                <div style="font-size: var(--font-size-xs); opacity: 0.8;">{userRole}</div>
+            </div>
+            <i class="fas fa-chevron-down" style="font-size: 10px; opacity: 0.8;"></i>
+        </div>
     </div>
 
-    <h1 class="section-header">Workshop Management</h1>
+    <h1 class="section-header">Workshop Overview</h1>
 
     <div class="content-card">
         <div class="card-header">
             <h2>Workshops</h2>
             <div class="search-container">
                 <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search workshops..." aria-label="Search Workshops" bind:value={searchTerm}>
+                    <input type="text" id="searchInput" placeholder="Search by Name..." aria-label="Search Workshops" bind:value={searchTerm}>
                     <i class="fas fa-search"></i>
                 </div>
+                {#if isAdmin}
+                    <button class="btn btn-primary" on:click={() => showModal('add')}>
+                        <i class="fas fa-plus"></i> Add Workshop
+                    </button>
+                {/if}
             </div>
         </div>
         <div class="card-body">
+            {#if successMessage}
+                <div class="alert alert-success">{successMessage}</div>
+            {/if}
+            {#if errorMessage}
+                <div class="alert alert-error">{errorMessage}</div>
+            {/if}
+
             {#if isLoading}
                 <div class="loading-spinner">Loading...</div>
             {:else}
+                <div>Total Workshops: {filteredWorkshops.length}</div>
                 <div class="table-container">
                     <table class="data-table" aria-label="Workshops Table">
                         <thead>
                             <tr>
                                 <th>No</th>
-                                <th>Workshop Name</th>
+                                <th>Name</th>
                                 <th>Location</th>
                                 <th>Contact</th>
                                 <th>Captain</th>
-                                <th>Actions</th>
+                                {#if isAdmin}
+                                    <th>Actions</th>
+                                {/if}
                             </tr>
                         </thead>
-                        <tbody id="workshopsTable">
-                            {#each paginatedWorkshops as workshop}
+                        <tbody>
+                            {#each paginatedWorkshops as workshop, i}
                                 <tr>
-                                    <td>{workshop.id}</td>
-                                    <td>{workshop.name}</td>
-                                    <td>{workshop.location}</td>
-                                    <td>{workshop.contact}</td>
-                                    <td>{workshop.captain}</td>
-                                    <td>
-                                        <button class="action-btn" on:click={() => handleEdit(workshop)} aria-label="Edit Workshop">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="action-btn error" on:click={() => deleteWorkshop(workshop.id)} aria-label="Delete Workshop">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
+                                    <td>{(currentPage - 1) * itemsPerPage + i + 1}</td>
+                                    <td>{workshop.name || '-'}</td>
+                                    <td>{workshop.location || '-'}</td>
+                                    <td>{workshop.contact || '-'}</td>
+                                    <td>{workshop.captain || '-'}</td>
+                                    {#if isAdmin}
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="action-btn edit" on:click={() => handleEdit(workshop)} aria-label="Edit Workshop">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="action-btn delete" on:click={() => deleteWorkshop(workshop.id)} aria-label="Delete Workshop">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    {/if}
                                 </tr>
                             {/each}
                         </tbody>
                     </table>
                 </div>
-                <div class="pagination" role="navigation" aria-label="Pagination">
-                    <button on:click={() => changePage(currentPage - 1)} aria-label="Previous Page">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
-                        <button class:active={page === currentPage} on:click={() => changePage(page)} aria-current={page === currentPage ? 'page' : null}>
-                            {page}
+                {#if totalPages > 1}
+                    <div class="pagination" role="navigation" aria-label="Pagination">
+                        <button on:click={() => changePage(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous Page">
+                            <i class="fas fa-chevron-left"></i>
                         </button>
-                    {/each}
-                    <button on:click={() => changePage(currentPage + 1)} aria-label="Next Page">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                        {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
+                            <button class:active={page === currentPage} on:click={() => changePage(page)} aria-current={page === currentPage ? 'page' : null}>
+                                {page}
+                            </button>
+                        {/each}
+                        <button on:click={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next Page">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                {/if}
             {/if}
         </div>
     </div>
@@ -250,28 +320,28 @@
                     <form on:submit|preventDefault={handleAddWorkshop}>
                         <div class="form-group">
                             <label for="name">Workshop Name</label>
-                            <input type="text" id="name" bind:value={formData.name} aria-required="true" aria-invalid={formErrors.name ? 'true' : 'false'} />
+                            <input type="text" id="name" bind:value={formData.name} aria-required="true" />
                             {#if formErrors.name}
                                 <small style="color: red;">{formErrors.name}</small>
                             {/if}
                         </div>
                         <div class="form-group">
                             <label for="location">Location</label>
-                            <input type="text" id="location" bind:value={formData.location} aria-required="true" aria-invalid={formErrors.location ? 'true' : 'false'} />
+                            <input type="text" id="location" bind:value={formData.location} aria-required="true" />
                             {#if formErrors.location}
                                 <small style="color: red;">{formErrors.location}</small>
                             {/if}
                         </div>
                         <div class="form-group">
                             <label for="contact">Contact</label>
-                            <input type="text" id="contact" bind:value={formData.contact} aria-required="true" aria-invalid={formErrors.contact ? 'true' : 'false'} />
+                            <input type="text" id="contact" bind:value={formData.contact} aria-required="true" />
                             {#if formErrors.contact}
                                 <small style="color: red;">{formErrors.contact}</small>
                             {/if}
                         </div>
                         <div class="form-group">
                             <label for="captain">Captain</label>
-                            <input type="text" id="captain" bind:value={formData.captain} aria-required="true" aria-invalid={formErrors.captain ? 'true' : 'false'} />
+                            <input type="text" id="captain" bind:value={formData.captain} aria-required="true" />
                             {#if formErrors.captain}
                                 <small style="color: red;">{formErrors.captain}</small>
                             {/if}
@@ -297,28 +367,28 @@
                     <form on:submit|preventDefault={handleEditWorkshop}>
                         <div class="form-group">
                             <label for="name">Workshop Name</label>
-                            <input type="text" id="name" bind:value={formData.name} aria-required="true" aria-invalid={formErrors.name ? 'true' : 'false'} />
+                            <input type="text" id="name" bind:value={formData.name} aria-required="true" />
                             {#if formErrors.name}
                                 <small style="color: red;">{formErrors.name}</small>
                             {/if}
                         </div>
                         <div class="form-group">
                             <label for="location">Location</label>
-                            <input type="text" id="location" bind:value={formData.location} aria-required="true" aria-invalid={formErrors.location ? 'true' : 'false'} />
+                            <input type="text" id="location" bind:value={formData.location} aria-required="true" />
                             {#if formErrors.location}
                                 <small style="color: red;">{formErrors.location}</small>
                             {/if}
                         </div>
                         <div class="form-group">
                             <label for="contact">Contact</label>
-                            <input type="text" id="contact" bind:value={formData.contact} aria-required="true" aria-invalid={formErrors.contact ? 'true' : 'false'} />
+                            <input type="text" id="contact" bind:value={formData.contact} aria-required="true" />
                             {#if formErrors.contact}
                                 <small style="color: red;">{formErrors.contact}</small>
                             {/if}
                         </div>
                         <div class="form-group">
                             <label for="captain">Captain</label>
-                            <input type="text" id="captain" bind:value={formData.captain} aria-required="true" aria-invalid={formErrors.captain ? 'true' : 'false'} />
+                            <input type="text" id="captain" bind:value={formData.captain} aria-required="true" />
                             {#if formErrors.captain}
                                 <small style="color: red;">{formErrors.captain}</small>
                             {/if}
@@ -330,58 +400,3 @@
         </div>
     {/if}
 </main>
-
-<style>
-    .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .modal-content {
-        background: white;
-        padding: var(--spacing-lg);
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--spacing-md);
-    }
-    .form-group {
-        margin-bottom: var(--spacing-md);
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: var(--spacing-sm);
-    }
-    .form-group input {
-        width: 100%;
-        padding: var(--spacing-sm);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-    }
-    .loading-spinner {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--spacing-lg);
-    }
-    #sidebar {
-        transition: width 0.3s ease;
-    }
-    #sidebar.collapsed {
-        width: 60px;
-    }
-    #sidebar.collapsed ul li a {
-        display: none;
-    }
-</style>

@@ -63,11 +63,5 @@
   {/if}
 </div>
 
-<style>
-  @media (max-width: 1024px) {
-    .main-container {
-      margin-left: 0 !important;
-      width: 100% !important;
-    }
-  }
-</style>
+
+

@@ -1,10 +1,10 @@
 import { fetchAll } from '$lib/db';
 
 export async function load({ locals }) {
-  const captains = await fetchAll('captains', 'id, name, employee_id, phone, workshop', { orderBy: 'id', order: 'ASC' });
+  const workshops = await fetchAll('workshops', '*', { orderBy: 'id', order: 'ASC' });
   
   return {
-    captains,
+    workshops,
     userRole: locals.user?.role || 'Member'
   };
 }
